@@ -1,596 +1,328 @@
-# This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
-# Copyright (c) 2024 Ian Thomas
-
 import re
 
-from .fountain import (
-    ElementType,
-    TitleEntry,
-    Action,
-    SceneHeading,
-    Character,
-    Dialogue,
-    Parenthetical,
-    Lyric,
-    Transition,
-    PageBreak,
-    Note,
-    Boneyard,
-    Section,
-    Synopsis,
-    Script,
-)
+DEBUG = True  # Set to False to disable debug prints
 
 
-def is_whitespace_or_empty(line):
-    return not bool(line.strip())
+class Node:
+    def evaluate(self, context):
+        raise NotImplementedError()
 
+    def debug_print(self, indent=0):
+        print("  " * indent + str(self))
+
+
+class BinaryOp(Node):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.op = op
+        self.right = right
+
+    def evaluate(self, context):
+        left_val = self.left.evaluate(context)
+        right_val = self.right.evaluate(context)
+        result = None
+
+        # Ensure right_val is converted to match left_val type, but never modify left_val
+        if isinstance(left_val, bool):
+            if isinstance(right_val, (int,float)):
+                right_val = right_val!=0
+            elif isinstance(right_val, str):
+                right_val = right_val.lower()=="true" or right_val=="1"
+            elif not isinstance(right_val, bool):
+                raise TypeError(f"Type mismatch: Cannot compare bool '{left_val}' with non-bool '{right_val}'")
+        elif isinstance(left_val, str):
+            if isinstance(right_val, bool):
+                right_val = "true" if right_val else "false"
+            elif isinstance(right_val, (int, float)):
+                right_val = str(right_val)  # Convert number to string
+            elif not isinstance(right_val, str):
+                raise TypeError(f"Type mismatch: Cannot compare string '{left_val}' with non-string '{right_val}'")
+        elif isinstance(left_val, (int, float)):
+            if isinstance(right_val, bool):
+                right_val = 1 if right_val else 0
+            elif isinstance(right_val, str):
+                try:
+                    right_val = float(right_val)
+                except ValueError:
+                    raise TypeError(f"Type mismatch: Cannot compare numeric '{left_val}' with non-numeric string '{right_val}'")
+            if isinstance(left_val, int):
+                if int(right_val)==right_val:
+                    right_val = int(right_val)
+        else:
+            raise TypeError(f"Unsupported type for comparison: {type(left_val)}")
+
+        if isinstance(left_val, str):
+            if self.op == "==":
+                result = left_val == right_val
+            elif self.op == "!=":
+                result = left_val != right_val
+            else:
+                raise RuntimeError(f"Unsupported op {self.op} for comparison: {type(left_val)}")
+        elif isinstance(left_val, bool):
+            if self.op == "and":
+                result = left_val and right_val
+            elif self.op == "or":
+                result = left_val or right_val
+            elif self.op == "==":
+                result = left_val == right_val
+            elif self.op == "!=":
+                result = left_val != right_val
+            else:
+                raise RuntimeError(f"Unsupported operator '{self.op}' for comparison: {type(left_val)}")
+        else:
+            if self.op == "and":
+                result = left_val and right_val
+            elif self.op == "or":
+                result = left_val or right_val
+            elif self.op == "==":
+                result = left_val == right_val
+            elif self.op == "!=":
+                result = left_val != right_val
+            elif self.op == ">":
+                result = left_val > right_val
+            elif self.op == "<":
+                result = left_val < right_val
+            elif self.op == ">=":
+                result = left_val >= right_val
+            elif self.op == "<=":
+                result = left_val <= right_val
+        
+        if DEBUG:
+            print(f"Evaluating: {left_val} {self.op} {right_val} -> {result}")
+        return result
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"BinaryOp({self.op})")
+        self.left.debug_print(indent + 1)
+        self.right.debug_print(indent + 1)
+
+
+class UnaryOp(Node):
+    def __init__(self, op, operand):
+        self.op = op
+        self.operand = operand
+
+    def evaluate(self, context):
+        val = self.operand.evaluate(context)
+        result = not val if self.op == "not" else val
+        if DEBUG:
+            print(f"Evaluating: {self.op} {val} -> {result}")
+        return result
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"UnaryOp({self.op})")
+        self.operand.debug_print(indent + 1)
+
+
+class BooleanLiteral(Node):
+    def __init__(self, value):
+        self.value = value
+
+    def evaluate(self, context):
+        if DEBUG:
+            print(f"Boolean literal: {self.value}")
+        return self.value
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"BooleanLiteral({self.value})")
+
+
+class NumericLiteral(Node):
+    def __init__(self, value):
+        self.value = float(value) if '.' in value else int(value)
+
+    def evaluate(self, context):
+        if DEBUG:
+            print(f"Numeric literal: {self.value}")
+        return self.value
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"NumericLiteral({self.value})")
+
+
+class Variable(Node):
+    def __init__(self, name):
+        self.name = name
+
+    def evaluate(self, context):
+        value = context.get(self.name)
+        if value is None:
+            raise RuntimeError(f"Variable '{self.name}' not found in context.")
+        
+        if DEBUG:
+            print(f"Fetching variable: {self.name} -> {value}")
+        return value
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"Variable({self.name})")
+
+
+class StringLiteral(Node):
+    def __init__(self, value):
+        self.value = value
+
+    def evaluate(self, context):
+        if DEBUG:
+            print(f"String literal: {self.value}")
+        return self.value
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"StringLiteral({self.value})")
+
+
+class FunctionCall(Node):
+    def __init__(self, func_name, args=[]):
+        self.func_name = func_name
+        self.args = args
+
+    def evaluate(self, context):
+        func = context.get(self.func_name) #, lambda *args: False)
+        if func is None:
+            raise RuntimeError(f"Function '{self.func_name}' not found in context.")
+        
+        arg_values = [arg.evaluate(context) for arg in self.args]
+        result = func(*arg_values)
+        if DEBUG:
+            print(f"Calling function: {self.func_name}({arg_values}) -> {result}")
+        return result
+
+    def debug_print(self, indent=0):
+        print("  " * indent + f"FunctionCall({self.func_name})")
+        for arg in self.args:
+            arg.debug_print(indent + 1)
+
+
+TOKEN_REGEX = re.compile(r'''
+    \s*(
+        >=|<=|==|=|!=|>|<|\(|\)|,|and|&&|or|\|\||not|!  # Operators & keywords
+        | [A-Za-z_][A-Za-z0-9_]*                        # Identifiers (Variables & Functions)
+        | \d+\.\d+(?![A-Za-z_])                         # Floating-point numbers (without trailing letters)
+        | \d+(?![A-Za-z_])                              # Integers (without trailing letters)
+        | "[^"]*"                                       # Strings in double quotes
+        | '[^']*'                                       # Strings in single quotes
+        | true|false|True|False                         # Boolean literals
+    )\s*
+''', re.VERBOSE)
 
 class Parser:
     def __init__(self):
-        self.script = Script()
+        self.tokens = []
+        self.pos = 0
 
-        self.mergeActions = True
-        self.mergeDialogue = True
-        self.useTags = False
+    def parse(self, expression):
+        self.tokens = self.tokenize(expression)
+        self.pos = 0
+        node = self.parse_or()
+        if DEBUG:
+            print("Parsed Expression Tree:")
+            node.debug_print()
+        return node
 
-        self._inTitlePage = True
-        self._multiLineTitleEntry = False
+    def tokenize(self, expression):
+        tokens = []
+        pos = 0
 
-        self._lineBeforeBoneyard = ""
-        self._boneyard = None
-
-        self._lineBeforeNote = ""
-        self._note = None
-
-        self._pending = []
-        self._padActions = []
-
-        self._line = ""
-        self._lineTrim = ""
-        self._lastLineEmpty = True
-        self._lastLine = ""
-        self._line_tags = []
-
-        self._inDialogue = False
-
-    def add_text(self, input_text):
-        """Parse a block of text (UTF-8) into the script."""
-        lines = input_text.splitlines()
-        self.add_lines(lines)
-
-    def add_lines(self, lines):
-        """Parse an array of text lines into the script."""
-        for line in lines:
-            self.add_line(line)
-        self.finalize()
-
-    def add_line(self, line):
-        """Parse a single line of text."""
-        self._lastLine = self._line
-        self._lastLineEmpty = is_whitespace_or_empty(self._line)
-
-        self._line = line
-
-        if self._parse_boneyard():
-            return
-        if self._parse_notes():
-            return
-        
-        newTags = [];
-        if self.useTags:
-            (untagged, tags) = self._extract_tags(line)
-            newTags = tags
-            self._line = untagged
-
-        self._lineTrim = self._line.strip()
-
-        # Handle pending elements
-        if self._pending:
-            self._parse_pending()
-
-        self._line_tags = newTags
-
-        # Parse title page
-        if self._inTitlePage and self._parse_title_page():
-            return
-
-        # Parse different element types
-        if self._parse_section():
-            return
-        if self._parse_forced_action():
-            return
-        if self._parse_forced_scene_heading():
-            return
-        if self._parse_forced_character():
-            return
-        if self._parse_forced_transition():
-            return
-        if self._parse_page_break():
-            return
-        if self._parse_lyrics():
-            return
-        if self._parse_synopsis():
-            return
-        if self._parse_centred_text():
-            return
-        if self._parse_scene_heading():
-            return
-        if self._parse_transition():
-            return
-        if self._parse_parenthetical():
-            return
-        if self._parse_character():
-            return
-        if self._parse_dialogue():
-            return
-
-        # Default to action
-        self._parse_action()
-
-    def finalize(self):
-        """Complete parsing by processing any remaining pending elements."""
-        self._line = ""
-        self._lineTrim = ""
-        self._parse_pending()
-
-    def _get_last_elem(self):
-        """Retrieve the last parsed element."""
-        if self.script.elements:
-            return self.script.elements[-1]
-        return None
-
-    def _add_element(self, elem):
-        """Add a new element to the script or merge it with the previous one."""
-
-        elem.append_tags(self._line_tags)
-        self._line_tags = []
-
-        last_elem = self._get_last_elem()
-
-        # Handle blank action lines
-        if elem.type == ElementType.ACTION and is_whitespace_or_empty(elem.text_raw) and not elem.centered:
-            self._inDialogue = False
-
-            if last_elem and last_elem.type == ElementType.ACTION:
-                self._padActions.append(elem)
-                return
-            return
-
-        # Add padding actions if any
-        if elem.type == ElementType.ACTION and self._padActions:
-            if self.mergeActions and last_elem and not last_elem.centered:
-                for pad_action in self._padActions:
-                    last_elem.append_line(pad_action.text_raw)
-                    last_elem.append_tags(pad_action.tags)
-            else:
-                self.script.elements.extend(self._padActions)
-
-        self._padActions = []
-
-        # Merge consecutive actions
-        if (
-            self.mergeActions
-            and elem.type == ElementType.ACTION
-            and not elem.centered
-            and last_elem
-            and last_elem.type == ElementType.ACTION
-            and not last_elem.centered
-        ):
-            last_elem.append_line(elem.text_raw)
-            last_elem.append_tags(elem.tags)
-            return
-
-        # Add the element
-        self.script.elements.append(elem)
-
-        # Update dialogue state
-        self._inDialogue = elem.type in {ElementType.CHARACTER, ElementType.PARENTHETICAL, ElementType.DIALOGUE}
-
-    def _parse_pending(self):
-        """Resolve pending elements."""
-        for pending in self._pending:
-
-            pending["element"].append_tags(self._line_tags)
-            pending["backup"].append_tags(self._line_tags)
-            self._line_tags = []
-        
-            if pending["type"] == ElementType.TRANSITION:
-                if is_whitespace_or_empty(self._line):
-                    self._add_element(pending["element"])
-                else:
-                    self._add_element(pending["backup"])
-            elif pending["type"] == ElementType.CHARACTER:
-                if not is_whitespace_or_empty(self._line):
-                    self._add_element(pending["element"])
-                else:
-                    self._add_element(pending["backup"])
-        self._pending = []
-
-    def _parse_title_page(self):
-        regex_title_entry = re.compile(r"^\s*([A-Za-z0-9 ]+?)\s*:\s*(.*?)\s*$")
-        regex_title_multiline_entry = re.compile(r"^( {3,}|\t)")
-
-        match = regex_title_entry.match(self._line)
-        if match:
-            # It's of form key:text
-            text = match.group(2)
-            self.script.titleEntries.append(TitleEntry(match.group(1), text))
-            self._multiLineTitleEntry = len(text) == 0
-            return True
-
-        if self._multiLineTitleEntry:
-            # If we're expecting text on this line
-            if regex_title_multiline_entry.match(self._line):
-                entry = self.script.titleEntries[-1]
-                entry.append_line(self._line)
-                return True
-
-        self._inTitlePage = False
-        return False
-    
-    def _parse_page_break(self):
-        """Parses a page break if the current line matches the pattern."""
-        regex_page_break = re.compile(r"^\s*={3,}\s*$")
-        if regex_page_break.match(self._line):
-            self._add_element(PageBreak())
-            return True
-        return False
-
-    def _parse_lyrics(self):
-        """Parses lyrics if the current line starts with '~'."""
-        if self._lineTrim.startswith("~"):
-            self._add_element(Lyric(self._lineTrim[1:].strip()))
-            return True
-        return False
-    
-    def _parse_synopsis(self):
-        """Parses a synopsis if the current line starts with a single '='."""
-        regex_synopsis = re.compile(r"^=(?!\=)")
-        if regex_synopsis.match(self._lineTrim):
-            synopsis_text = self._lineTrim[1:].strip()
-            self._add_element(Synopsis(synopsis_text))
-            return True
-        return False
-
-    def _parse_centred_text(self):
-        """Parses centered text if the line starts and ends with angle brackets '>' and '<'."""
-        if self._lineTrim.startswith(">") and self._lineTrim.endswith("<"):
-            centered_text = self._lineTrim[1:-1]
-            centered_action = Action(centered_text)
-            centered_action.centered = True
-            self._add_element(centered_action)
-            return True
-        return False
-    
-    def _decode_heading(self, line):
-        """
-        Decodes a scene heading into text and scene number.
-        Scene numbers are enclosed in `#` at the end of the heading.
-        """
-        regex = re.compile(r"^(.*?)(?:\s*#([a-zA-Z0-9\-.]+)#)?$")
-        match = regex.match(line)
-        if match:
-            return {
-                "text": match.group(1).strip(),
-                "scene_number": match.group(2) if match.group(2) else None
-            }
-        return None
-
-    def _parse_forced_scene_heading(self):
-        """
-        Parses a forced scene heading. 
-        A forced scene heading starts with a dot (`.`) followed by text.
-        """
-        regex = re.compile(r"^\.[a-zA-Z0-9]")
-        if regex.match(self._lineTrim):
-            heading_data = self._decode_heading(self._lineTrim[1:])
-            if heading_data:
-                self._add_element(SceneHeading(
-                    text=heading_data["text"],
-                    scene_number=heading_data["scene_number"],
-                    forced=True
-                ))
-                return True
-        return False
-
-    def _parse_scene_heading(self):
-        """
-        Parses a scene heading.
-        A scene heading starts with keywords like INT, EXT, EST, INT./EXT, etc.
-        """
-        regex_heading = re.compile(r"^\s*((INT|EXT|EST|INT\.\/EXT|INT\/EXT|I\/E)(\.|\s))|(FADE IN:\s*)", re.IGNORECASE)
-        if regex_heading.match(self._lineTrim):
-            heading_data = self._decode_heading(self._lineTrim)
-            if heading_data:
-                self._add_element(SceneHeading(
-                    text=heading_data["text"],
-                    scene_number=heading_data["scene_number"],
-                    forced=False
-                ))
-                return True
-        return False
-    
-    def _parse_forced_transition(self):
-        """
-        Parses a forced transition. 
-        A forced transition starts with '>' but does not end with '<'.
-        """
-        if self._lineTrim.startswith(">") and not self._lineTrim.endswith("<"):
-            self._add_element(Transition(self._lineTrim[1:].strip(), forced=True))
-            return True
-        return False
-
-    def _parse_transition(self):
-        """
-        Parses a transition. 
-        Transitions usually end with 'TO:' and are surrounded by empty lines.
-        """
-        regex_transition = re.compile(r"^\s*(?:[A-Z\s]+TO:)\s*$")
-        if regex_transition.match(self._line) and is_whitespace_or_empty(self._lastLine):
-            # Add as pending to determine if it's a transition or action based on the next line
-            self._pending.append({
-                "type": ElementType.TRANSITION,
-                "element": Transition(self._lineTrim),
-                "backup": Action(self._lineTrim)
-            })
-            return True
-        return False
-    
-    def _parse_parenthetical(self):
-        """
-        Parses a parenthetical. 
-        Parentheticals are lines enclosed in parentheses.
-        """
-        regex_parenthetical = re.compile(r"^\(.*\)$")
-        lastElem = self._get_last_elem()
-        if regex_parenthetical.match(self._lineTrim) \
-            and self._inDialogue \
-            and lastElem and (lastElem.type == ElementType.CHARACTER or lastElem.type == ElementType.DIALOGUE):
-            parenthetical_text = self._lineTrim.strip("()").strip()
-            self._add_element(Parenthetical(parenthetical_text))
-            return True
-        return False
-    
-    def _decode_character(self, line):
-        """
-        Decodes a character name, handling CONT'D notes, dual dialogue carets,
-        and extensions like (V.O.) or (O.S.).
-        """
-        regex_cont = re.compile(r"\(\s*CONT[’']D\s*\)", re.IGNORECASE)
-        regex_character = re.compile(r"^([^(\^]+?)\s*(?:\((.*)\))?(?:\s*\^\s*)?$")
-
-        # Remove CONT'D notes
-        line_trimmed = re.sub(regex_cont, "", line).strip()
-
-        match = regex_character.match(line_trimmed)
-        if match:
-            name = match.group(1).strip()  # Extract NAME
-            extension = match.group(2).strip() if match.group(2) else None  # Extract extension if present
-            dual = line.strip().endswith("^")  # Check for the caret
-            return {"name": name, "dual": dual, "extension": extension}
-        return None
-
-    def _parse_forced_character(self):
-        """
-        Parses a forced character cue, which starts with '@'.
-        """
-        if self._lineTrim.startswith("@"):
-            line_trimmed = self._lineTrim[1:]
-            character = self._decode_character(line_trimmed)
-            if character:
-                self._add_element(Character(
-                    text=line_trimmed,
-                    name=character["name"],
-                    extension=character["extension"],
-                    dual=character["dual"]
-                ))
-                return True
-        return False
-
-    def _parse_character(self):
-        """
-        Parses a regular character cue.
-        Character cues must be uppercase, preceded by an empty line,
-        and not contain lowercase letters (except in extensions).
-        """
-        regex_cont = re.compile(r"\(\s*CONT[’']D\s*\)", re.IGNORECASE)
-        regex_character = re.compile(r"^([A-Z][^a-z]*?)\s*(?:\(.*\))?(?:\s*\^\s*)?$")
-
-        # Remove CONT'D notes
-        line_trimmed = re.sub(regex_cont, "", self._lineTrim).strip()
-
-        if self._lastLineEmpty and regex_character.match(line_trimmed):
-            character = self._decode_character(line_trimmed)
-            if character:
-                char_element = Character(
-                    text=line_trimmed,
-                    name=character["name"],
-                    extension=character["extension"],
-                    dual=character["dual"]
-                )
-
-                # Can't commit until the next line isn't empty
-                self._pending.append({
-                    "type":  ElementType.CHARACTER,
-                    "element": char_element,
-                    "backup": Action(self._lineTrim)
-                })
-                return True
-        return False
-    
-    def _parse_dialogue(self):
-        """
-        Parses a dialogue line. 
-        Dialogue follows a character or parenthetical element.
-        """
-        lastElem = self._get_last_elem()
-
-        if lastElem and self._line and lastElem.type in [ElementType.CHARACTER, ElementType.PARENTHETICAL]:
-            self._add_element(Dialogue(self._lineTrim))
-            return True
-
-        # Dialogue continuation (merging lines)
-        if lastElem and lastElem.type == ElementType.DIALOGUE:
-            # Special case: Line-break in dialogue
-            if self._lastLineEmpty and len(self._lastLine)>0:
-
-                if self.mergeDialogue:
-                    lastElem.append_line("")
-                    lastElem.append_line(self._lineTrim)
-                else:
-                    self._add_element(Dialogue(""))
-                    self._add_element(Dialogue(self._lineTrim))
-
-                return True
+        while pos < len(expression):
+            match = TOKEN_REGEX.match(expression, pos)
+            if not match:
+                raise SyntaxError(f"Unrecognized token at position {pos}: '{expression[pos:]}'")
             
-            if not self._lastLineEmpty and len(self._lineTrim)>0:
-                if self.mergeDialogue:
-                    lastElem.append_line(self._lineTrim)
-                else:
-                    self._add_element(Dialogue(self._lineTrim))
-                return True
+            token = match.group(0).strip()
+            if token:
+                tokens.append(token)
 
-        return False
+            pos = match.end()
 
-    def _parse_forced_action(self):
-        """
-        Parses a forced action line. 
-        Forced action lines start with `!` and are added as `FountainAction` with `forced=True`.
-        """
-        if self._lineTrim.startswith("!"):
-            action_text = self._lineTrim[1:].strip()  # Remove the leading `!`
-            self._add_element(Action(action_text, forced=True))
+        if DEBUG:
+            print(f"Tokens: {tokens}")
+
+        return tokens
+
+    def parse_or(self):
+        node = self.parse_and()
+        while self.match("or") or self.match("||"):
+            node = BinaryOp(node, "or", self.parse_and())
+        return node
+
+    def parse_and(self):
+        node = self.parse_unary_op()
+        while self.match("and") or self.match("&&"):
+            node = BinaryOp(node, "and", self.parse_unary_op())
+        return node
+
+    def parse_unary_op(self):
+        if self.match("not") or self.match("!"):
+            return UnaryOp("not", self.parse_unary_op())
+        return self.parse_binary_op()
+
+    def parse_binary_op(self):
+        node = self.parse_term()
+        while self.match("==", "!=", ">", "<", ">=", "<=", "="):
+            op = self.previous()
+            if op=="=":
+                op="=="
+            node = BinaryOp(node, op, self.parse_term())
+        return node
+
+    def parse_term(self):
+        if self.match("("):
+            node = self.parse_or()
+            self.consume(")")
+            return node
+        elif self.match("true") or self.match("True"):
+            return BooleanLiteral(True)
+        elif self.match("false") or self.match("False"):
+            return BooleanLiteral(False)
+        elif re.match(r'^\d+(\.\d+)?$', self.peek()):
+            return NumericLiteral(self.advance())
+        elif self.peek().startswith("\"") and self.peek().endswith("\""):
+            return StringLiteral(self.advance()[1:-1])
+        elif self.peek().startswith("\'") and self.peek().endswith("\'"):
+            return StringLiteral(self.advance()[1:-1])
+        elif self.match_identifier():
+            name = self.previous()
+            if self.match("("):
+                args = []
+                if not self.match(")"):
+                    args.append(self.parse_or())
+                    while self.match(","):
+                        args.append(self.parse_or())
+                    self.consume(")")
+                return FunctionCall(name, args)
+            return Variable(name)
+        raise SyntaxError(f"Unexpected token: {self.peek()}")
+    
+    def match(self, *expected_tokens):
+        if self.pos < len(self.tokens) and self.tokens[self.pos] in expected_tokens:
+            self.pos += 1
             return True
         return False
 
-    def _parse_action(self):
-        """
-        Parses a regular action line.
-        Regular action lines are added as `FountainAction` with `forced=False`.
-        """
-        self._add_element(Action(self._line))
+    def consume(self, expected_token):
+        if self.match(expected_token):
+            return
+        raise SyntaxError(f"Expected '{expected_token}' but found '{self.peek()}'")
 
-    def _parse_boneyard(self):
-        """
-        Parses boneyard blocks (/* ... */).
-        A boneyard is a block of text ignored by the parser, but stored for reference.
-        """
-        # Handle inline boneyards
-        open_idx = self._line.find("/*")
-        close_idx = self._line.find("*/", open_idx if open_idx>-1 else 0)
-        last_tag_idx = -1
+    def peek(self):
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
-        while open_idx > -1 and close_idx > open_idx:
-            # Extract boneyard content and replace it with a tag
-            boneyard_text = self._line[open_idx + 2:close_idx]
-            self.script.boneyards.append(Boneyard(boneyard_text))
-            tag = f"/*{len(self.script.boneyards) - 1}*/"
-            self._line = self._line[:open_idx] + tag + self._line[close_idx + 2:]
-            last_tag_idx = open_idx + len(tag)
-            open_idx = self._line.find("/*", last_tag_idx)
-            close_idx = self._line.find("*/", last_tag_idx)
+    def previous(self):
+        return self.tokens[self.pos - 1] if self.pos > 0 else None
 
-        # Check for the start of a boneyard block
-        if not self._boneyard:
-            idx = self._line.find("/*", last_tag_idx if last_tag_idx>-1 else 0)
-            if idx > -1:  # Entering a boneyard block
-                self._lineBeforeBoneyard = self._line[:idx]
-                self._boneyard = Boneyard(self._line[idx + 2:])
-                return True
-        else:
-            # Check for the end of the current boneyard block
-            idx = self._line.find("*/", last_tag_idx if last_tag_idx>-1 else 0)
-            if idx > -1:  # Boneyard ends
-                self._boneyard.append_line(self._line[:idx])
-                self.script.boneyards.append(self._boneyard)
-                tag = f"/*{len(self.script.boneyards) - 1}*/"
-                self._line = self._lineBeforeBoneyard + tag + self._line[idx + 2:]
-                self._lineBeforeBoneyard = ""
-                self._boneyard = None
-            else:  # Still in boneyard
-                self._boneyard.append_line(self._line)
-                return True
+    def advance(self):
+        if self.pos < len(self.tokens):
+            self.pos += 1
+            return self.tokens[self.pos - 1]
+        return None
 
+    def expect(self, expected_token):
+        token = self.advance()
+        if token != expected_token:
+            raise SyntaxError(f"Expected '{expected_token}', but found '{token}'")
+        return token
+
+    def match_identifier(self):
+        if self.pos < len(self.tokens) and re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', self.tokens[self.pos]):
+            self.pos += 1
+            return True
         return False
-    
-
-    def _parse_notes(self):
-        """
-        Parses note blocks ([[ ... ]]).
-        Notes are blocks of text ignored by the script but stored for reference.
-        """
-        # Handle inline notes
-        open_idx = self._line.find("[[")
-        close_idx = self._line.find("]]", open_idx if open_idx>-1 else 0 )
-        last_tag_idx = -1
-
-        while open_idx > -1 and close_idx > open_idx:
-            # Extract note content and replace it with a tag
-            note_text = self._line[open_idx + 2:close_idx]
-            self.script.notes.append(Note(note_text))
-            tag = f"[[{len(self.script.notes) - 1}]]"
-            self._line = self._line[:open_idx] + tag + self._line[close_idx + 2:]
-            last_tag_idx = open_idx + len(tag)
-            open_idx = self._line.find("[[", last_tag_idx)
-            close_idx = self._line.find("]]", last_tag_idx)
-
-        # Check for the start of a note block
-        if not self._note:
-            idx = self._line.find("[[", last_tag_idx if last_tag_idx>-1 else 0)
-            if idx > -1:  # Entering a note block
-                self._lineBeforeNote = self._line[:idx]
-                self._note = Note(self._line[idx + 2:])
-                return True
-        else:
-            # Check for the end of the current note block
-            idx = self._line.find("]]", last_tag_idx if last_tag_idx>-1 else 0)
-            if idx > -1:  # Note block ends
-                self._note.append_line(self._line[:idx])
-                self.script.notes.append(self._note)
-                tag = f"[[{len(self.script.notes) - 1}]]"
-                self._line = self._lineBeforeNote + tag + self._line[idx + 2:]
-                self._lineBeforeNote = ""
-                self._note = None
-            elif self._line=="":
-                # End of note due to line break
-                self.script.notes.append(self._note)
-                tag = f"[[{len(self.script.notes) - 1}]]"
-                self._line = self._lineBeforeNote + tag
-                self._lineBeforeNote = ""
-                self._note = None
-            else:  # Still in the note block
-                self._note.append_line(self._line)
-                return True
-
-        return False
-
-    def _parse_section(self):
-        """
-        Parses a section heading. 
-        Section headings are lines starting with one or more '#' characters.
-        """
-        depth = 0
-        for char in self._lineTrim:
-            if char == '#' and depth < 7:
-                depth += 1
-            else:
-                break
-        if depth == 0:
-            return False
-
-        self._add_element(Section(depth, self._lineTrim[depth:].strip()))
-        return True
-    
-    def _extract_tags(self, line):
-        regex = re.compile(r"\s#([^\s#][^#]*?)(?=\s|$)")
-        tags = []
-        first_match_index = None
-        
-        for match in regex.finditer(line):
-            if first_match_index is None:
-                first_match_index = match.start()
-            tags.append(match.group(1))
-        
-        untagged = line[:first_match_index].rstrip() if first_match_index is not None else line
-        return untagged, tags
