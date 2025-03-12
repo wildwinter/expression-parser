@@ -213,6 +213,10 @@ class Parser:
         self.tokens = self.tokenize(expression)
         self.pos = 0
         node = self.parse_or()
+
+        if self.pos < len(self.tokens):
+            raise SyntaxError(f"Unexpected token '{self.tokens[self.pos]}' at position {self.pos}")
+    
         if DEBUG:
             print("Parsed Expression Tree:")
             node.debug_print()

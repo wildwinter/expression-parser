@@ -33,3 +33,5 @@ funable("boo")
 ("testing" && ("nesting" or "bucket"))
 (True && (False or True))
 -1
+-1.0
+5-1
