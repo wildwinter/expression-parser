@@ -1,0 +1,16 @@
+HEADING:"INT. SCEHE 1 - DAY" tags:scene1Day,mook:music,hababibibi
+ACTION:"This is scene 1, we think!" tags:taggy
+CHARACTER:"DAVE" tags:tagtag
+DIALOGUE:"Nice day, right?" tags:niceday?
+TRANSITION:"CUT TO:" tags:this_is_also_a_tag
+SECTION:"This is a Section" (1)
+HEADING:"ext. OLYMPIA CIRCUS - NIGHT" tags:tagtagtag,anothertag,taggy
+ACTION:"...where the second-rate carnival is parked for the moment in an Alabama field." tags:carnivalfield
+HEADING:"FORCED HEADER" tags:headeher
+CHARACTER:"JIM" tags:jimtag
+DIALOGUE:"Bye!" tags:bye:jim
+SECTION:"Another Sequence" (2) tags:hoopla
+SECTION:"Another Act" (1) tags:actTag
+HEADING:"INT./EXT. HEADER WITH SCENENUM" (3) tags:tagtag
+HEADING:"EST BUCKET LIST" (A3-1) tags:oohbutisthisatag?
+ACTION:". NOT A HEADER" tags:bah
