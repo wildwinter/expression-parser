@@ -32,3 +32,4 @@ whisky("test",7)=='7whisky_test'
 funable("boo")
 ("testing" && ("nesting" or "bucket"))
 (True && (False or True))
+-1

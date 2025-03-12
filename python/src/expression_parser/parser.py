@@ -196,8 +196,8 @@ TOKEN_REGEX = re.compile(r'''
     \s*(
         >=|<=|==|=|!=|>|<|\(|\)|,|and|&&|or|\|\||not|!  # Operators & keywords
         | [A-Za-z_][A-Za-z0-9_]*                        # Identifiers (Variables & Functions)
-        | \d+\.\d+(?![A-Za-z_])                         # Floating-point numbers (without trailing letters)
-        | \d+(?![A-Za-z_])                              # Integers (without trailing letters)
+        | -?\d+\.\d+(?![A-Za-z_])                       # Floating-point numbers (supports negative)
+        | -?\d+(?![A-Za-z_])                            # Integers (supports negative)
         | "[^"]*"                                       # Strings in double quotes
         | '[^']*'                                       # Strings in single quotes
         | true|false|True|False                         # Boolean literals
@@ -273,7 +273,7 @@ class Parser:
             return BooleanLiteral(True)
         elif self.match("false") or self.match("False"):
             return BooleanLiteral(False)
-        elif re.match(r'^\d+(\.\d+)?$', self.peek()):
+        elif re.match(r'^-?\d+(\.\d+)?$', self.peek()):
             return NumericLiteral(self.advance())
         elif self.peek().startswith("\"") and self.peek().endswith("\""):
             return StringLiteral(self.advance()[1:-1])
