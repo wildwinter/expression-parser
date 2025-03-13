@@ -48,8 +48,6 @@ class BinaryOp(Node):
             if isinstance(left_val, int):
                 if int(right_val)==right_val:
                     right_val = int(right_val)
-        else:
-            raise TypeError(f"Unsupported type for comparison: {type(left_val)}")
 
         if isinstance(left_val, str):
             if self.op == "==":
@@ -57,7 +55,7 @@ class BinaryOp(Node):
             elif self.op == "!=":
                 result = left_val != right_val
             else:
-                raise RuntimeError(f"Unsupported op {self.op} for comparison: {type(left_val)}")
+                raise RuntimeError(f"Unsupported operator '{self.op}' for string.")
         elif isinstance(left_val, bool):
             if self.op == "and":
                 result = left_val and right_val
@@ -68,9 +66,19 @@ class BinaryOp(Node):
             elif self.op == "!=":
                 result = left_val != right_val
             else:
-                raise RuntimeError(f"Unsupported operator '{self.op}' for comparison: {type(left_val)}")
+                raise RuntimeError(f"Unsupported operator '{self.op}' for bool.")
         else:
-            if self.op == "and":
+            if self.op == "+":
+                result = left_val + right_val
+            elif self.op == "-":
+                result = left_val - right_val
+            elif self.op == "*":
+                result = left_val * right_val
+            elif self.op == "/":
+                if right_val == 0:
+                    raise ZeroDivisionError("Division by zero.")
+                result = left_val / right_val
+            elif self.op == "and":
                 result = left_val and right_val
             elif self.op == "or":
                 result = left_val or right_val
@@ -195,6 +203,7 @@ class FunctionCall(Node):
 TOKEN_REGEX = re.compile(r'''
     \s*(
         >=|<=|==|=|!=|>|<|\(|\)|,|and|&&|or|\|\||not|!  # Operators & keywords
+        | \+|\-|\/|\*                                   # Maths operators
         | [A-Za-z_][A-Za-z0-9_]*                        # Identifiers (Variables & Functions)
         | -?\d+\.\d+(?![A-Za-z_])                       # Floating-point numbers (supports negative)
         | -?\d+(?![A-Za-z_])                            # Integers (supports negative)
@@ -259,13 +268,27 @@ class Parser:
             return UnaryOp("not", self.parse_unary_op())
         return self.parse_binary_op()
 
-    def parse_binary_op(self):
+    def parse_math_add_sub(self):
+        node = self.parse_math_mul_div()
+        while self.match("+", "-"):
+            op = self.previous()
+            node = BinaryOp(node, op, self.parse_math_mul_div())
+        return node
+
+    def parse_math_mul_div(self):
         node = self.parse_term()
+        while self.match("*", "/"):
+            op = self.previous()
+            node = BinaryOp(node, op, self.parse_term())
+        return node
+
+    def parse_binary_op(self):
+        node = self.parse_math_add_sub()
         while self.match("==", "!=", ">", "<", ">=", "<=", "="):
             op = self.previous()
-            if op=="=":
-                op="=="
-            node = BinaryOp(node, op, self.parse_term())
+            if op == "=":
+                op = "=="
+            node = BinaryOp(node, op, self.parse_math_add_sub())
         return node
 
     def parse_term(self):

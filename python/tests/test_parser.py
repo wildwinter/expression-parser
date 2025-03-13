@@ -51,6 +51,8 @@ class TestParser(unittest.TestCase):
                 print(f"SyntaxError: {e}")
             except RuntimeError as e:
                 print(f"RuntimeError: {e}")
+            except ZeroDivisionError as e:
+                print(f"ZeroDivisionError: {e}")
 
             print("")
 
