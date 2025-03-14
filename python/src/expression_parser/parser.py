@@ -57,6 +57,7 @@ class BinaryOp(Node):
                 right_val = float(right_val)
             except ValueError:
                 raise TypeError(f"Type mismatch: Cannot compare numeric '{left_val}' with non-numeric string '{right_val}'")
+        
         if isinstance(left_val, int):
             if int(right_val) == right_val:
                 right_val = int(right_val)
@@ -312,6 +313,13 @@ class Parser:
             return UnaryOp("-", self._parse_unary_op())
         return self._parse_term()
     
+    def _parse_string_literal(self) -> Optional[StringLiteral]:
+        string_val = self._peek()
+        if string_val and ((string_val.startswith('"') and string_val.endswith('"')) or (string_val.startswith("'") and string_val.endswith("'"))):
+            self._advance()
+            return StringLiteral(string_val[1:-1])
+        return None
+    
     def _parse_term(self) -> Node:
         if self._match("("):
             node: Node = self._parse_or()
@@ -323,16 +331,15 @@ class Parser:
             return BooleanLiteral(False)
         elif re.match(r'^-?\d+(\.\d+)?$', self._peek() or ""):
             return NumericLiteral(self._advance() or "")
-        elif self._peek() and self._peek().startswith("\"") and self._peek().endswith("\""):
-            token = self._advance() or ""
-            return StringLiteral(token[1:-1])
-        elif self._peek() and self._peek().startswith("'") and self._peek().endswith("'"):
-            token = self._advance() or ""
-            return StringLiteral(token[1:-1])
-        identifier: Optional[str] = self._match_identifier()
+        
+        string_val = self._parse_string_literal()
+        if string_val is not None:
+            return string_val
+        
+        identifier = self._match_identifier()
         if identifier:
             if self._match("("):
-                args: List[Node] = []
+                args = []
                 if not self._match(")"):
                     args.append(self._parse_or())
                     while self._match(","):
