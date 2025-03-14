@@ -1,4 +1,5 @@
 import re
+import inspect
 from typing import Any, Dict, List, Optional, Union
 
 class Node:
@@ -103,7 +104,7 @@ class BinaryOp(Node):
         elif isinstance(left_val, (int, float)):
             result = self._eval_num(left_val, right_val)
         else:
-            raise RuntimeError(f"Unsupported types for operator '{self._op}'.")
+            raise RuntimeError(f"Unsupported types for operator '{self._op}' - '{left_val}', '{right_val}'.")
         
         if dump_eval is not None:
             dump_eval.append(f"Evaluated: {left_val} {self._op} {right_val} = {result}")
@@ -179,6 +180,8 @@ class Variable(Node):
         value = context.get(self._name)
         if value is None:
             raise RuntimeError(f"Variable '{self._name}' not found in context.")
+        if not isinstance(value, (int, float, bool, str)):
+            raise TypeError(f"Variable '{self._name}' must return bool, string, or numeric.")
         
         if dump_eval is not None:
             dump_eval.append(f"Fetching variable: {self._name} -> {value}")
@@ -214,9 +217,22 @@ class FunctionCall(Node):
             raise RuntimeError(f"Function '{self._func_name}' not found in context.")
         
         arg_values: List[Any] = [arg.evaluate(context, dump_eval) for arg in self._args]
+
+        # Get the function signature and check if it accepts the provided arguments.
+        sig = inspect.signature(func)
+        try:
+            sig.bind(*arg_values)
+        except TypeError as e:
+            raise RuntimeError(f"Function '{self._func_name}' does not support the provided arguments {arg_values}.")
+
         result = func(*arg_values)
+
+        if not isinstance(result, (int, float, bool, str)):
+            raise TypeError(f"Function '{self._func_name}' must return bool, string, or numeric.")
+        
         if dump_eval is not None:
             dump_eval.append(f"Calling function: {self._func_name}({arg_values}) = {result}")
+
         return result
 
     def dump_structure(self, indent: int = 0) -> str:

@@ -21,6 +21,21 @@ class TestParser(unittest.TestCase):
         except Exception as e:
             self.fail(f"Error loading {file_name}: {e}")
 
+    def test_simple(self):
+        
+        parser = Parser()
+        expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0")
+
+        context = {
+            "get_name":lambda: "fred",
+            "counter": 1
+        }
+
+        result = expression.evaluate(context)
+
+        self.assertEqual(result, True, "Expression should return True")
+
+
     def test_parse(self):
 
         source = self._load_file("Parse.txt")
@@ -33,7 +48,8 @@ class TestParser(unittest.TestCase):
             "D":False,
             "get_name":lambda: "fred",
             "end_func":lambda: True,
-            "whisky": lambda id, n: str(n)+"whisky_"+id
+            "whisky": lambda id, n: str(n)+"whisky_"+id,
+            "counter":1
         }
 
         parser = Parser()
@@ -63,13 +79,10 @@ class TestParser(unittest.TestCase):
 
             processed_lines.append("")
 
-        # Recombine the processed lines into a string
         output = "\n".join(processed_lines)
 
         match = self._load_file("Parse-Output.txt")
-        #print(output)
-        
-        #print(output)
+
         self.assertMultiLineEqual(match, output)
 
 if __name__ == "__main__":

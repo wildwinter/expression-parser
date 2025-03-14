@@ -241,7 +241,7 @@ get_name("jim")
 FunctionCall(get_name)
   StringLiteral(jim)
 
-TypeError: <lambda>() takes 0 positional arguments but 1 was given
+RuntimeError: Function 'get_name' does not support the provided arguments ['jim'].
 
 whisky("test",7)=="7whisky_test"
 BinaryOp(==)

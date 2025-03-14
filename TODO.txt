@@ -1,16 +1,10 @@
-Fix up params errors for function calls
-Extract evaluator
-
-Fix up test to match strings
-
 Javascript
 C#
 cpp
 
 Error reporting etc.
 
-
-
 ----
 
 Support math expressions
+Fix up params errors for function calls
