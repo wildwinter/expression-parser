@@ -110,7 +110,12 @@ class UnaryOp(Node):
 
     def evaluate(self, context, dump_eval = None):
         val = self.operand.evaluate(context, dump_eval)
-        result = not val if self.op == "not" else val
+        if self.op == "not":
+            result = not val
+        elif self.op == "-":
+            result = -val  # Proper negation for numbers
+        else:
+            raise RuntimeError(f"Unsupported unary operator '{self.op}'")
         if dump_eval is not None:
             dump_eval.append(f"Evaluated: {self.op} {val} = {result}")
         return result
@@ -257,11 +262,6 @@ class Parser:
             node = BinaryOp(node, "and", self.parse_unary_op())
         return node
 
-    def parse_unary_op(self):
-        if self.match("not") or self.match("!"):
-            return UnaryOp("not", self.parse_unary_op())
-        return self.parse_binary_op()
-
     def parse_math_add_sub(self):
         node = self.parse_math_mul_div()
         while self.match("+", "-"):
@@ -285,6 +285,13 @@ class Parser:
             node = BinaryOp(node, op, self.parse_math_add_sub())
         return node
 
+    def parse_unary_op(self):
+        if self.match("not") or self.match("!"):
+            return UnaryOp("not", self.parse_unary_op())
+        elif self.match("-"):
+            return UnaryOp("-", self.parse_unary_op())
+        return self.parse_binary_op()
+    
     def parse_term(self):
         if self.match("("):
             node = self.parse_or()
