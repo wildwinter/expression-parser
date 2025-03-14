@@ -1,14 +1,11 @@
 import re
 
-DEBUG = True  # Set to False to disable debug prints
-
-
 class Node:
-    def evaluate(self, context):
+    def evaluate(self, context, dump_eval = None):
         raise NotImplementedError()
 
-    def debug_print(self, indent=0):
-        print("  " * indent + str(self))
+    def dump_structure(self, indent=0):
+        return ("  " * indent + str(self))+"\n"
 
 
 class BinaryOp(Node):
@@ -17,9 +14,9 @@ class BinaryOp(Node):
         self.op = op
         self.right = right
 
-    def evaluate(self, context):
-        left_val = self.left.evaluate(context)
-        right_val = self.right.evaluate(context)
+    def evaluate(self, context, dump_eval = None):
+        left_val = self.left.evaluate(context, dump_eval)
+        right_val = self.right.evaluate(context, dump_eval)
         result = None
 
         # Ensure right_val is converted to match left_val type, but never modify left_val
@@ -79,13 +76,13 @@ class BinaryOp(Node):
                     raise ZeroDivisionError("Division by zero.")
                 result = left_val / right_val
             elif self.op == "and":
-                result = left_val and right_val
+                result = bool(left_val and right_val)
             elif self.op == "or":
-                result = left_val or right_val
+                result = bool(left_val or right_val)
             elif self.op == "==":
-                result = left_val == right_val
+                result = bool(left_val == right_val)
             elif self.op == "!=":
-                result = left_val != right_val
+                result = bool(left_val != right_val)
             elif self.op == ">":
                 result = left_val > right_val
             elif self.op == "<":
@@ -95,14 +92,15 @@ class BinaryOp(Node):
             elif self.op == "<=":
                 result = left_val <= right_val
         
-        if DEBUG:
-            print(f"Evaluating: {left_val} {self.op} {right_val} -> {result}")
+        if dump_eval is not None:
+            dump_eval.append(f"Evaluated: {left_val} {self.op} {right_val} = {result}")
         return result
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"BinaryOp({self.op})")
-        self.left.debug_print(indent + 1)
-        self.right.debug_print(indent + 1)
+    def dump_structure(self, indent=0):
+        out = ("  " * indent + f"BinaryOp({self.op})")+"\n"
+        out += self.left.dump_structure(indent + 1)
+        out += self.right.dump_structure(indent + 1)
+        return out
 
 
 class UnaryOp(Node):
@@ -110,72 +108,73 @@ class UnaryOp(Node):
         self.op = op
         self.operand = operand
 
-    def evaluate(self, context):
-        val = self.operand.evaluate(context)
+    def evaluate(self, context, dump_eval = None):
+        val = self.operand.evaluate(context, dump_eval)
         result = not val if self.op == "not" else val
-        if DEBUG:
-            print(f"Evaluating: {self.op} {val} -> {result}")
+        if dump_eval is not None:
+            dump_eval.append(f"Evaluated: {self.op} {val} = {result}")
         return result
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"UnaryOp({self.op})")
-        self.operand.debug_print(indent + 1)
+    def dump_structure(self, indent=0):
+        out = ("  " * indent + f"UnaryOp({self.op})")+"\n"
+        out += self.operand.dump_structure(indent + 1)
+        return out
 
 
 class BooleanLiteral(Node):
     def __init__(self, value):
         self.value = value
 
-    def evaluate(self, context):
-        if DEBUG:
-            print(f"Boolean literal: {self.value}")
+    def evaluate(self, context, dump_eval = None):
+        if dump_eval is not None:
+            dump_eval.append(f"Boolean literal: {self.value}")
         return self.value
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"BooleanLiteral({self.value})")
+    def dump_structure(self, indent=0):
+        return ("  " * indent + f"BooleanLiteral({self.value})")+"\n"
 
 
 class NumericLiteral(Node):
     def __init__(self, value):
         self.value = float(value) if '.' in value else int(value)
 
-    def evaluate(self, context):
-        if DEBUG:
-            print(f"Numeric literal: {self.value}")
+    def evaluate(self, context, dump_eval = None):
+        if dump_eval is not None:
+            dump_eval.append(f"Numeric literal: {self.value}")
         return self.value
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"NumericLiteral({self.value})")
+    def dump_structure(self, indent=0):
+        return ("  " * indent + f"NumericLiteral({self.value})")+"\n"
 
 
 class Variable(Node):
     def __init__(self, name):
         self.name = name
 
-    def evaluate(self, context):
+    def evaluate(self, context, dump_eval = None):
         value = context.get(self.name)
         if value is None:
             raise RuntimeError(f"Variable '{self.name}' not found in context.")
         
-        if DEBUG:
-            print(f"Fetching variable: {self.name} -> {value}")
+        if dump_eval is not None:
+            dump_eval.append(f"Fetching variable: {self.name} -> {value}")
         return value
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"Variable({self.name})")
+    def dump_structure(self, indent=0):
+        return ("  " * indent + f"Variable({self.name})")+"\n"
 
 
 class StringLiteral(Node):
     def __init__(self, value):
         self.value = value
 
-    def evaluate(self, context):
-        if DEBUG:
-            print(f"String literal: {self.value}")
+    def evaluate(self, context, dump_eval = None):
+        if dump_eval is not None:
+            dump_eval.append(f"String literal: {self.value}")
         return self.value
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"StringLiteral({self.value})")
+    def dump_structure(self, indent=0):
+        return ("  " * indent + f"StringLiteral({self.value})")+"\n"
 
 
 class FunctionCall(Node):
@@ -183,21 +182,22 @@ class FunctionCall(Node):
         self.func_name = func_name
         self.args = args
 
-    def evaluate(self, context):
+    def evaluate(self, context, dump_eval = None):
         func = context.get(self.func_name) #, lambda *args: False)
         if func is None:
             raise RuntimeError(f"Function '{self.func_name}' not found in context.")
         
-        arg_values = [arg.evaluate(context) for arg in self.args]
+        arg_values = [arg.evaluate(context, dump_eval) for arg in self.args]
         result = func(*arg_values)
-        if DEBUG:
-            print(f"Calling function: {self.func_name}({arg_values}) -> {result}")
+        if dump_eval is not None:
+            dump_eval.append(f"Calling function: {self.func_name}({arg_values}) = {result}")
         return result
 
-    def debug_print(self, indent=0):
-        print("  " * indent + f"FunctionCall({self.func_name})")
+    def dump_structure(self, indent=0):
+        out = ("  " * indent + f"FunctionCall({self.func_name})")+"\n"
         for arg in self.args:
-            arg.debug_print(indent + 1)
+            out += arg.dump_structure(indent + 1)
+        return out
 
 
 TOKEN_REGEX = re.compile(r'''
@@ -226,9 +226,6 @@ class Parser:
         if self.pos < len(self.tokens):
             raise SyntaxError(f"Unexpected token '{self.tokens[self.pos]}' at position {self.pos}")
     
-        if DEBUG:
-            print("Parsed Expression Tree:")
-            node.debug_print()
         return node
 
     def tokenize(self, expression):
@@ -245,9 +242,6 @@ class Parser:
                 tokens.append(token)
 
             pos = match.end()
-
-        if DEBUG:
-            print(f"Tokens: {tokens}")
 
         return tokens
 

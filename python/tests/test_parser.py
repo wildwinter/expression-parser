@@ -41,20 +41,28 @@ class TestParser(unittest.TestCase):
 
         processed_lines = []
         for line in lines:
-            print(line)
+            if (line.startswith("//")):
+                processed_lines.append(line)
+                continue
+
+            processed_lines.append(line)
             try:
                 node = parser.parse(line)
-                node.evaluate(context)
+                processed_lines.append(node.dump_structure())
+                dump_eval = []
+                node.evaluate(context, dump_eval)
+                processed_lines.append("\n".join(dump_eval))
+                
             except TypeError as e:
-                print(f"TypeError: {e}")
+                processed_lines.append(f"TypeError: {e}")
             except SyntaxError as e:
-                print(f"SyntaxError: {e}")
+                processed_lines.append(f"SyntaxError: {e}")
             except RuntimeError as e:
-                print(f"RuntimeError: {e}")
+                processed_lines.append(f"RuntimeError: {e}")
             except ZeroDivisionError as e:
-                print(f"ZeroDivisionError: {e}")
+                processed_lines.append(f"ZeroDivisionError: {e}")
 
-            print("")
+            processed_lines.append("")
 
         # Recombine the processed lines into a string
         result = "\n".join(processed_lines)
