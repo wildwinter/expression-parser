@@ -24,7 +24,6 @@ class TestParser(unittest.TestCase):
     def test_parse(self):
 
         source = self._load_file("Parse.txt")
-        #match = self._load_file("ParseTree.txt")
 
         # Split into lines
         lines = source.splitlines()
@@ -65,13 +64,13 @@ class TestParser(unittest.TestCase):
             processed_lines.append("")
 
         # Recombine the processed lines into a string
-        result = "\n".join(processed_lines)
+        output = "\n".join(processed_lines)
 
-        print(result)
-        
-        # output = fp.script.dump();
+        match = self._load_file("Parse-Output.txt")
         #print(output)
-       # self.assertMultiLineEqual(match, output)
+        
+        #print(output)
+        self.assertMultiLineEqual(match, output)
 
 if __name__ == "__main__":
     unittest.main()
