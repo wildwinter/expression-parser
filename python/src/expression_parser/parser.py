@@ -257,9 +257,9 @@ class Parser:
         return node
 
     def parse_and(self):
-        node = self.parse_unary_op()
+        node = self.parse_binary_op()
         while self.match("and") or self.match("&&"):
-            node = BinaryOp(node, "and", self.parse_unary_op())
+            node = BinaryOp(node, "and", self.parse_binary_op())
         return node
 
     def parse_math_add_sub(self):
@@ -270,10 +270,10 @@ class Parser:
         return node
 
     def parse_math_mul_div(self):
-        node = self.parse_term()
+        node = self.parse_unary_op()
         while self.match("*", "/"):
             op = self.previous()
-            node = BinaryOp(node, op, self.parse_term())
+            node = BinaryOp(node, op, self.parse_unary_op())
         return node
 
     def parse_binary_op(self):
@@ -290,7 +290,7 @@ class Parser:
             return UnaryOp("not", self.parse_unary_op())
         elif self.match("-"):
             return UnaryOp("-", self.parse_unary_op())
-        return self.parse_binary_op()
+        return self.parse_term()
     
     def parse_term(self):
         if self.match("("):

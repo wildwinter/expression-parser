@@ -23,7 +23,7 @@ E
 101=101.1
 101==101.0
 !10!=9
-(!10)!=9
+!(10!=9)
 get_name()=="fred"
 get_name("jim")
 whisky("test",7)=="7whisky_test"
