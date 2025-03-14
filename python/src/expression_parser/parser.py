@@ -14,83 +14,94 @@ class BinaryOp(Node):
         self.op = op
         self.right = right
 
+    def _eval_bool(self, left_val, right_val):
+        if isinstance(right_val, (int,float)):
+            right_val = right_val!=0
+        elif isinstance(right_val, str):
+            right_val = right_val.lower()=="true" or right_val=="1"
+        elif not isinstance(right_val, bool):
+            raise TypeError(f"Type mismatch: Cannot compare bool '{left_val}' with non-bool '{right_val}'")
+        
+        if self.op == "and":
+            return left_val and right_val
+        elif self.op == "or":
+            return left_val or right_val
+        elif self.op == "==":
+            return left_val == right_val
+        elif self.op == "!=":
+            return left_val != right_val
+        
+        raise RuntimeError(f"Unsupported operator '{self.op}' for bool.")
+    
+    def _eval_str(self, left_val, right_val):
+        if isinstance(right_val, bool):
+            right_val = "true" if right_val else "false"
+        elif isinstance(right_val, (int, float)):
+            right_val = str(right_val)  # Convert number to string
+        elif not isinstance(right_val, str):
+            raise TypeError(f"Type mismatch: Cannot compare string '{left_val}' with non-string '{right_val}'")
+
+        if self.op == "==":
+            return left_val == right_val
+        elif self.op == "!=":
+            return left_val != right_val
+        
+        raise RuntimeError(f"Unsupported operator '{self.op}' for string.")
+    
+    def _eval_num(self, left_val, right_val):
+        if isinstance(right_val, bool):
+            right_val = 1 if right_val else 0
+        elif isinstance(right_val, str):
+            try:
+                right_val = float(right_val)
+            except ValueError:
+                raise TypeError(f"Type mismatch: Cannot compare numeric '{left_val}' with non-numeric string '{right_val}'")
+        if isinstance(left_val, int):
+            if int(right_val)==right_val:
+                right_val = int(right_val)
+        
+        if self.op == "+":
+            return left_val + right_val
+        elif self.op == "-":
+            return  left_val - right_val
+        elif self.op == "*":
+            return  left_val * right_val
+        elif self.op == "/":
+            if right_val == 0:
+                raise ZeroDivisionError("Division by zero.")
+            return  left_val / right_val
+        elif self.op == "and":
+            return  bool(left_val and right_val)
+        elif self.op == "or":
+            return  bool(left_val or right_val)
+        elif self.op == "==":
+            return  bool(left_val == right_val)
+        elif self.op == "!=":
+            return  bool(left_val != right_val)
+        elif self.op == ">":
+            return  left_val > right_val
+        elif self.op == "<":
+            return  left_val < right_val
+        elif self.op == ">=":
+            return  left_val >= right_val
+        elif self.op == "<=":
+            return  left_val <= right_val
+        
+        raise RuntimeError(f"Unsupported operator '{self.op}' for number.")
+
     def evaluate(self, context, dump_eval = None):
         left_val = self.left.evaluate(context, dump_eval)
         right_val = self.right.evaluate(context, dump_eval)
         result = None
 
-        # Ensure right_val is converted to match left_val type, but never modify left_val
         if isinstance(left_val, bool):
-            if isinstance(right_val, (int,float)):
-                right_val = right_val!=0
-            elif isinstance(right_val, str):
-                right_val = right_val.lower()=="true" or right_val=="1"
-            elif not isinstance(right_val, bool):
-                raise TypeError(f"Type mismatch: Cannot compare bool '{left_val}' with non-bool '{right_val}'")
+            result = self._eval_bool(left_val, right_val)
         elif isinstance(left_val, str):
-            if isinstance(right_val, bool):
-                right_val = "true" if right_val else "false"
-            elif isinstance(right_val, (int, float)):
-                right_val = str(right_val)  # Convert number to string
-            elif not isinstance(right_val, str):
-                raise TypeError(f"Type mismatch: Cannot compare string '{left_val}' with non-string '{right_val}'")
+            result = self._eval_str(left_val, right_val)
         elif isinstance(left_val, (int, float)):
-            if isinstance(right_val, bool):
-                right_val = 1 if right_val else 0
-            elif isinstance(right_val, str):
-                try:
-                    right_val = float(right_val)
-                except ValueError:
-                    raise TypeError(f"Type mismatch: Cannot compare numeric '{left_val}' with non-numeric string '{right_val}'")
-            if isinstance(left_val, int):
-                if int(right_val)==right_val:
-                    right_val = int(right_val)
-
-        if isinstance(left_val, str):
-            if self.op == "==":
-                result = left_val == right_val
-            elif self.op == "!=":
-                result = left_val != right_val
-            else:
-                raise RuntimeError(f"Unsupported operator '{self.op}' for string.")
-        elif isinstance(left_val, bool):
-            if self.op == "and":
-                result = left_val and right_val
-            elif self.op == "or":
-                result = left_val or right_val
-            elif self.op == "==":
-                result = left_val == right_val
-            elif self.op == "!=":
-                result = left_val != right_val
-            else:
-                raise RuntimeError(f"Unsupported operator '{self.op}' for bool.")
+            result = self._eval_num(left_val, right_val)
         else:
-            if self.op == "+":
-                result = left_val + right_val
-            elif self.op == "-":
-                result = left_val - right_val
-            elif self.op == "*":
-                result = left_val * right_val
-            elif self.op == "/":
-                if right_val == 0:
-                    raise ZeroDivisionError("Division by zero.")
-                result = left_val / right_val
-            elif self.op == "and":
-                result = bool(left_val and right_val)
-            elif self.op == "or":
-                result = bool(left_val or right_val)
-            elif self.op == "==":
-                result = bool(left_val == right_val)
-            elif self.op == "!=":
-                result = bool(left_val != right_val)
-            elif self.op == ">":
-                result = left_val > right_val
-            elif self.op == "<":
-                result = left_val < right_val
-            elif self.op == ">=":
-                result = left_val >= right_val
-            elif self.op == "<=":
-                result = left_val <= right_val
+            raise RuntimeError(f"Unsupported types for operator '{self.op}.")
         
         if dump_eval is not None:
             dump_eval.append(f"Evaluated: {left_val} {self.op} {right_val} = {result}")
@@ -111,9 +122,15 @@ class UnaryOp(Node):
     def evaluate(self, context, dump_eval = None):
         val = self.operand.evaluate(context, dump_eval)
         if self.op == "not":
-            result = not val
+            if isinstance(val, bool):
+                result = not val
+            else:
+                raise TypeError(f"Type mismatch: Can't call operator 'not' on a non-bool.")
         elif self.op == "-":
-            result = -val  # Proper negation for numbers
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                result = -val
+            else:
+                raise TypeError(f"Type mismatch: Can't call operator 'not' on a non-numeric.")
         else:
             raise RuntimeError(f"Unsupported unary operator '{self.op}'")
         if dump_eval is not None:

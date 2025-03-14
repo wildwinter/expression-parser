@@ -40,3 +40,5 @@ funable("boo")
 "hello" + "world"
 3 > 2 + 1
 5 / 0
+-True
+!5
