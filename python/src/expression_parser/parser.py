@@ -3,6 +3,53 @@ import inspect
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+
+def _make_bool(val: Any) -> bool:
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return val != 0
+    if isinstance(val, str):
+        return val.lower() == "true" or val == "1"
+    raise TypeError(f"Type mismatch: Expecting bool, but got '{val}'")
+
+
+def _make_str(val: Any) -> str:
+    if isinstance(val, str):
+        return val
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    if isinstance(val, (int, float)):
+        return str(val)
+    raise TypeError(f"Type mismatch: Expecting string but got '{val}'")
+
+
+def _make_numeric(val: Any) -> Union[int, float]:
+    if isinstance(val, bool):
+        return 1 if val else 0
+    if isinstance(val, (float, int)):
+        return val
+    if isinstance(val, str):
+        try:
+            return int(val)
+        except ValueError:
+            try:
+                return float(val)
+            except ValueError:
+                pass
+    raise TypeError(f"Type mismatch: Expecting number but got '{val}'")
+
+
+def _make_type_match(left_val: Any, right_val: Any) -> Any:
+    if isinstance(left_val, bool):
+        return _make_bool(right_val)
+    if isinstance(left_val, (int, float)):
+        return _make_numeric(right_val)
+    if isinstance(left_val, str):
+        return _make_str(right_val)
+    raise TypeError(f"Type mismatch: unrecognised type for '{left_val}'")
+
+
 class Node:
     @abstractmethod
     def __init__(self, name: str) -> None:
@@ -22,100 +69,20 @@ class BinaryOp(Node):
         self._left = left
         self._op = op
         self._right = right
-
-    def _eval_bool(self, left_val: bool, right_val: Any) -> bool:
-        if isinstance(right_val, (int, float)):
-            right_val = right_val != 0
-        elif isinstance(right_val, str):
-            right_val = right_val.lower() == "true" or right_val == "1"
-        elif not isinstance(right_val, bool):
-            raise TypeError(f"Type mismatch: Cannot compare bool '{left_val}' with non-bool '{right_val}'")
-        
-        if self._op == "and":
-            return left_val and right_val
-        elif self._op == "or":
-            return left_val or right_val
-        elif self._op == "==":
-            return left_val == right_val
-        elif self._op == "!=":
-            return left_val != right_val
-        
-        raise RuntimeError(f"Unsupported operator '{self._op}' for bool.")
     
-    def _eval_str(self, left_val: str, right_val: Any) -> bool:
-        if isinstance(right_val, bool):
-            right_val = "true" if right_val else "false"
-        elif isinstance(right_val, (int, float)):
-            right_val = str(right_val)
-        elif not isinstance(right_val, str):
-            raise TypeError(f"Type mismatch: Cannot compare string '{left_val}' with non-string '{right_val}'")
-
-        if self._op == "==":
-            return left_val == right_val
-        elif self._op == "!=":
-            return left_val != right_val
-        
-        raise RuntimeError(f"Unsupported operator '{self._op}' for string.")
-    
-    def _eval_num(self, left_val: Union[int, float], right_val: Any) -> Union[int, float, bool]:
-        if isinstance(right_val, bool):
-            right_val = 1 if right_val else 0
-        elif isinstance(right_val, str):
-            try:
-                right_val = float(right_val)
-            except ValueError:
-                raise TypeError(f"Type mismatch: Cannot compare numeric '{left_val}' with non-numeric string '{right_val}'")
-        
-        if isinstance(left_val, int):
-            if int(right_val) == right_val:
-                right_val = int(right_val)
-        
-        if self._op == "+":
-            return left_val + right_val
-        elif self._op == "-":
-            return left_val - right_val
-        elif self._op == "*":
-            return left_val * right_val
-        elif self._op == "/":
-            if right_val == 0:
-                raise ZeroDivisionError("Division by zero.")
-            return left_val / right_val
-        elif self._op == "and":
-            return bool(left_val and right_val)
-        elif self._op == "or":
-            return bool(left_val or right_val)
-        elif self._op == "==":
-            return bool(left_val == right_val)
-        elif self._op == "!=":
-            return bool(left_val != right_val)
-        elif self._op == ">":
-            return left_val > right_val
-        elif self._op == "<":
-            return left_val < right_val
-        elif self._op == ">=":
-            return left_val >= right_val
-        elif self._op == "<=":
-            return left_val <= right_val
-        
-        raise RuntimeError(f"Unsupported operator '{self._op}' for number.")
-
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
         left_val = self._left.evaluate(context, dump_eval)
         right_val = self._right.evaluate(context, dump_eval)
-        result: Any = None
-
-        if isinstance(left_val, bool):
-            result = self._eval_bool(left_val, right_val)
-        elif isinstance(left_val, str):
-            result = self._eval_str(left_val, right_val)
-        elif isinstance(left_val, (int, float)):
-            result = self._eval_num(left_val, right_val)
-        else:
-            raise RuntimeError(f"Unsupported types for operator '{self._op}' - '{left_val}', '{right_val}'.")
+        result: Any = self._do_eval(left_val, right_val)
         
         if dump_eval is not None:
             dump_eval.append(f"Evaluated: {left_val} {self._op} {right_val} = {result}")
+
         return result
+    
+    @abstractmethod
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any:
+        pass
 
     def dump_structure(self, indent: int = 0) -> str:
         out = ("  " * indent + f"{self._name}") + "\n"
@@ -123,60 +90,127 @@ class BinaryOp(Node):
         out += self._right.dump_structure(indent + 1)
         return out
     
+
 class OpAnd(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("And", left, "and", right)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_bool(left_val) and _make_bool(right_val)
+    
 
 class OpOr(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Or", left, "or", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_bool(left_val) or _make_bool(right_val)
+
+
 class OpEquals(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Equals", left, "==", right)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        right_val = _make_type_match(left_val, right_val)
+        return left_val == right_val
+
 
 class OpNotEquals(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("NotEquals", left, "!=", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        right_val = _make_type_match(left_val, right_val)
+        return left_val != right_val
+
+
 class OpPlus(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Plus", left, "+", right)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) + _make_numeric(right_val)
+
 
 class OpMinus(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Minus", left, "-", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) - _make_numeric(right_val)
+
+
 class OpMultiply(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Multiply", left, "*", right)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) * _make_numeric(right_val)
+    
 
 class OpDivide(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("Divide", left, "/", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        right_val = _make_numeric(right_val)
+        if right_val == 0:
+            raise ZeroDivisionError("Division by zero.")
+        return _make_numeric(left_val) / right_val
+
+
 class OpGreaterThan(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("GreaterThan", left, ">", right)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) > _make_numeric(right_val)
+
 
 class OpLessThan(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("LessThan", left, "<", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) < _make_numeric(right_val)
+
+
 class OpGreaterThanEquals(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("GreaterThanEquals", left, ">=", right)
-
+    
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) >= _make_numeric(right_val)
+    
+    
 class OpLessThanEquals(BinaryOp):
     def __init__(self, left: Node, right: Node) -> None:
         super().__init__("LessThanEquals", left, "<=", right)
 
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) <= _make_numeric(right_val)
+    
 
 class UnaryOp(Node):
     @abstractmethod
-    def __init__(self, name:str, operand: Node) -> None:
+    def __init__(self, name: str, op: str, operand: Node) -> None:
         super().__init__(name)
         self._operand = operand
+        self._op = op
+
+    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
+        val = self._operand.evaluate(context, dump_eval)
+        result: Any = self._do_eval(val)
+        
+        if dump_eval is not None:
+            dump_eval.append(f"Evaluated: {self._op} {val} = {result}")
+        
+        return result
+    
+    @abstractmethod
+    def _do_eval(self, val: Any) -> Any:
+        pass
 
     def dump_structure(self, indent: int = 0) -> str:
         out = ("  " * indent + f"{self._name}") + "\n"
@@ -186,36 +220,20 @@ class UnaryOp(Node):
     
 class OpNegative(UnaryOp):
     def __init__(self, operand: Node) -> None:
-        super().__init__("Negative", operand)
+        super().__init__("Negative", "-", operand)
 
-    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
-        val = self._operand.evaluate(context, dump_eval)
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            result = -val
-        else:
-            raise TypeError("Type mismatch: Can't call operator '-' on a non-numeric.")
-        
-        if dump_eval is not None:
-            dump_eval.append(f"Evaluated: - {val} = {result}")
-        
-        return result
+    def _do_eval(self, val: Any) -> Any:
+        val = _make_numeric(val)
+        return -val
 
 
 class OpNot(UnaryOp):
     def __init__(self, operand: Node) -> None:
-        super().__init__("Not", operand)
+        super().__init__("Not", "not", operand)
 
-    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
-        val = self._operand.evaluate(context, dump_eval)
-        if isinstance(val, bool):
-            result = not val
-        else:
-            raise TypeError("Type mismatch: Can't call operator 'not' on a non-bool.")
-        
-        if dump_eval is not None:
-            dump_eval.append(f"Evaluated: not {val} = {result}")
-
-        return result
+    def _do_eval(self, val: Any) -> Any:
+        val = _make_bool(val)
+        return not val
 
 
 class LiteralBoolean(Node):
@@ -331,6 +349,7 @@ TOKEN_REGEX = re.compile(r'''
         | true|false|True|False                         # Booleans
     )\s*
 ''', re.VERBOSE)
+
 
 class Parser:
     def __init__(self) -> None:
@@ -466,6 +485,8 @@ class Parser:
     def _consume(self, expected_token: str) -> None:
         if self._match(expected_token):
             return
+        if self._pos>=len(self._tokens):
+            raise SyntaxError(f"Expected '{expected_token}' but expression ended.")
         raise SyntaxError(f"Expected '{expected_token}' but found '{self._peek()}'")
 
     def _peek(self) -> Optional[str]:

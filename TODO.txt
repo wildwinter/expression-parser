@@ -1,4 +1,3 @@
-Explicit Ops
 Add write functionality
 
 Javascript
@@ -11,3 +10,4 @@ Error reporting etc.
 
 Support math expressions
 Fix up params errors for function calls
+Explicit Ops
