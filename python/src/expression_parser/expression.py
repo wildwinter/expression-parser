@@ -5,6 +5,10 @@ import inspect
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+STRING_FORMAT_SINGLEQUOTE = 0
+STRING_FORMAT_ESCAPED_SINGLEQUOTE = 1
+STRING_FORMAT_DOUBLEQUOTE = 2
+STRING_FORMAT_ESCAPED_DOUBLEQUOTE = 3
 
 class ExpressionNode:
     @abstractmethod
@@ -20,7 +24,7 @@ class ExpressionNode:
         raise NotImplementedError()
     
     @abstractmethod
-    def write(self) -> str:
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
         raise NotImplementedError()
     
 
@@ -51,6 +55,9 @@ class BinaryOp(ExpressionNode):
         out += self._left.dump_structure(indent + 1)
         out += self._right.dump_structure(indent + 1)
         return out
+    
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        return f"{self._left.write(string_format)} {self._op} {self._right.write(string_format)}"
     
 
 class OpAnd(BinaryOp):
@@ -179,7 +186,10 @@ class UnaryOp(ExpressionNode):
         out += self._operand.dump_structure(indent + 1)
         return out
     
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        return self._op + self._operand.write(string_format)
     
+
 class OpNegative(UnaryOp):
     def __init__(self, operand: ExpressionNode) -> None:
         super().__init__("Negative", "-", operand)
@@ -210,6 +220,9 @@ class LiteralBoolean(ExpressionNode):
 
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Boolean({self._value})") + "\n"
+    
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        return "true" if self._value else "false"
 
 
 class LiteralNumber(ExpressionNode):
@@ -225,6 +238,9 @@ class LiteralNumber(ExpressionNode):
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Number({self._value})") + "\n"
 
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        return str(self._value)
+    
 
 class LiteralString(ExpressionNode):
     def __init__(self, value: str) -> None:
@@ -239,7 +255,16 @@ class LiteralString(ExpressionNode):
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"String({self._value})") + "\n"
 
-
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        if string_format==STRING_FORMAT_SINGLEQUOTE:
+            return f"'{self._value}'"
+        if string_format==STRING_FORMAT_ESCAPED_SINGLEQUOTE:
+            return f"\\'{self._value}\\'"
+        if string_format==STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
+            return f"\\\"{self._value}\\\""
+        return f"\"{self._value}\""
+    
+    
 class Variable(ExpressionNode):
     def __init__(self, name: str) -> None:
         super().__init__("Variable")
@@ -258,6 +283,9 @@ class Variable(ExpressionNode):
 
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Variable({self._name})") + "\n"
+    
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        return self._name
     
 
 class FunctionCall(ExpressionNode):
@@ -296,6 +324,15 @@ class FunctionCall(ExpressionNode):
         out = ("  " * indent + f"FunctionCall({self._func_name})") + "\n"
         for arg in self._args:
             out += arg.dump_structure(indent + 1)
+        return out
+    
+    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        out = self._func_name+"("
+        written_args = []
+        for arg in self._args:
+            written_args.append(arg.write(string_format))
+        out += ", ".join(written_args)
+        out += ")"
         return out
     
 

@@ -7,6 +7,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
+from expression_parser.expression import STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE
 from expression_parser.parser import Parser
 
 class TestWriter(unittest.TestCase):
@@ -25,14 +26,41 @@ class TestWriter(unittest.TestCase):
         
         parser = Parser()
         expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0")
+        
+        result = expression.write()
+        self.assertEqual(result, "get_name() == 'fred' and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        result = expression.write(string_format=STRING_FORMAT_DOUBLEQUOTE)
+        self.assertEqual(result, "get_name() == \"fred\" and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        result = expression.write(string_format=STRING_FORMAT_ESCAPED_DOUBLEQUOTE)
+        self.assertEqual(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        result = expression.write(string_format=STRING_FORMAT_ESCAPED_SINGLEQUOTE)
+        self.assertEqual(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
 
-        context = {
-            "get_name":lambda: "fred",
-            "counter": 1
-        }
+    def test_writer(self):
 
-        result = expression.evaluate(context)
+        source = self._load_file("Writer.txt")
 
-        expression.write()
+        # Split into lines
+        lines = source.splitlines()
 
-        #self.assertEqual(result, True, "Expression should return True")
+        parser = Parser()
+
+        processed_lines = []
+        for line in lines:
+            if (line.startswith("//")):
+                processed_lines.append(line)
+                continue
+
+            processed_lines.append(f'"{line}"')
+
+            node = parser.parse(line)
+            processed_lines.append(node.write())
+
+            processed_lines.append("")
+
+        output = "\n".join(processed_lines)
+
+        #print(output)
+
+        match = self._load_file("Writer-Output.txt")
+        self.assertMultiLineEqual(match, output)
