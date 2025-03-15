@@ -399,3 +399,92 @@ Not
 
 Number: 5
 Evaluated: not 5 = False
+
+"(6 + 2) * 5"
+Multiply
+  Plus
+    Number(6)
+    Number(2)
+  Number(5)
+
+Number: 6
+Number: 2
+Evaluated: 6 + 2 = 8
+Number: 5
+Evaluated: 8 * 5 = 40
+
+"6 / 4 * 3 >= 7 * 2"
+GreaterThanEquals
+  Multiply
+    Divide
+      Number(6)
+      Number(4)
+    Number(3)
+  Multiply
+    Number(7)
+    Number(2)
+
+Number: 6
+Number: 4
+Evaluated: 6 / 4 = 1.5
+Number: 3
+Evaluated: 1.5 * 3 = 4.5
+Number: 7
+Number: 2
+Evaluated: 7 * 2 = 14
+Evaluated: 4.5 >= 14 = False
+
+"6 / 4 * (3 >= 7) * 2"
+Multiply
+  Multiply
+    Divide
+      Number(6)
+      Number(4)
+    GreaterThanEquals
+      Number(3)
+      Number(7)
+  Number(2)
+
+Number: 6
+Number: 4
+Evaluated: 6 / 4 = 1.5
+Number: 3
+Number: 7
+Evaluated: 3 >= 7 = False
+Evaluated: 1.5 * False = 0.0
+Number: 2
+Evaluated: 0.0 * 2 = 0.0
+
+"6 / (4 * (3 >= 7)) * 2"
+Multiply
+  Divide
+    Number(6)
+    Multiply
+      Number(4)
+      GreaterThanEquals
+        Number(3)
+        Number(7)
+  Number(2)
+
+ZeroDivisionError: Division by zero.
+
+"6 / (4 * 3 >= 7) * 2"
+Multiply
+  Divide
+    Number(6)
+    GreaterThanEquals
+      Multiply
+        Number(4)
+        Number(3)
+      Number(7)
+  Number(2)
+
+Number: 6
+Number: 4
+Number: 3
+Evaluated: 4 * 3 = 12
+Number: 7
+Evaluated: 12 >= 7 = True
+Evaluated: 6 / True = 6.0
+Number: 2
+Evaluated: 6.0 * 2 = 12.0
