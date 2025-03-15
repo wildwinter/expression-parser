@@ -81,11 +81,10 @@ class TestParser(unittest.TestCase):
 
         output = "\n".join(processed_lines)
 
-        print(output)
+        #print(output)
 
-        #match = self._load_file("Parse-Output.txt")
-
-        #self.assertMultiLineEqual(match, output)
+        match = self._load_file("Parse-Output.txt")
+        self.assertMultiLineEqual(match, output)
 
 if __name__ == "__main__":
     unittest.main()
