@@ -1,17 +1,24 @@
 import re
 import inspect
+from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 class Node:
+    @abstractmethod
+    def __init__(self, name: str) -> None:
+        self._name = name
+
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
         raise NotImplementedError()
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + str(self)) + "\n"
-
+        return ("  " * indent + self._name) + "\n"
+    
 
 class BinaryOp(Node):
-    def __init__(self, left: Node, op: str, right: Node) -> None:
+    @abstractmethod
+    def __init__(self, name: str, left: Node, op: str, right: Node) -> None:
+        super().__init__(name)
         self._left = left
         self._op = op
         self._right = right
@@ -111,69 +118,151 @@ class BinaryOp(Node):
         return result
 
     def dump_structure(self, indent: int = 0) -> str:
-        out = ("  " * indent + f"BinaryOp({self._op})") + "\n"
+        out = ("  " * indent + f"{self._name}") + "\n"
         out += self._left.dump_structure(indent + 1)
         out += self._right.dump_structure(indent + 1)
         return out
+    
+class OpAnd(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("And", left, "and", right)
+
+class OpOr(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Or", left, "or", right)
+
+class OpEquals(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Equals", left, "==", right)
+
+class OpNotEquals(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("NotEquals", left, "!=", right)
+
+class OpPlus(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Plus", left, "+", right)
+
+class OpMinus(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Minus", left, "-", right)
+
+class OpMultiply(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Multiply", left, "*", right)
+
+class OpDivide(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("Divide", left, "/", right)
+
+class OpGreaterThan(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("GreaterThan", left, ">", right)
+
+class OpLessThan(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("LessThan", left, "<", right)
+
+class OpGreaterThanEquals(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("GreaterThanEquals", left, ">=", right)
+
+class OpLessThanEquals(BinaryOp):
+    def __init__(self, left: Node, right: Node) -> None:
+        super().__init__("LessThanEquals", left, "<=", right)
 
 
 class UnaryOp(Node):
-    def __init__(self, op: str, operand: Node) -> None:
-        self._op = op
+    @abstractmethod
+    def __init__(self, name:str, operand: Node) -> None:
+        super().__init__(name)
         self._operand = operand
+
+    def dump_structure(self, indent: int = 0) -> str:
+        out = ("  " * indent + f"{self._name}") + "\n"
+        out += self._operand.dump_structure(indent + 1)
+        return out
+    
+    
+class OpNegative(UnaryOp):
+    def __init__(self, operand: Node) -> None:
+        super().__init__("Negative", operand)
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
         val = self._operand.evaluate(context, dump_eval)
-        if self._op == "not":
-            if isinstance(val, bool):
-                result = not val
-            else:
-                raise TypeError("Type mismatch: Can't call operator 'not' on a non-bool.")
-        elif self._op == "-":
-            if isinstance(val, (int, float)) and not isinstance(val, bool):
-                result = -val
-            else:
-                raise TypeError("Type mismatch: Can't call operator '-' on a non-numeric.")
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            result = -val
         else:
-            raise RuntimeError(f"Unsupported unary operator '{self._op}'")
+            raise TypeError("Type mismatch: Can't call operator '-' on a non-numeric.")
+        
         if dump_eval is not None:
-            dump_eval.append(f"Evaluated: {self._op} {val} = {result}")
+            dump_eval.append(f"Evaluated: - {val} = {result}")
+        
         return result
 
-    def dump_structure(self, indent: int = 0) -> str:
-        out = ("  " * indent + f"UnaryOp({self._op})") + "\n"
-        out += self._operand.dump_structure(indent + 1)
-        return out
+
+class OpNot(UnaryOp):
+    def __init__(self, operand: Node) -> None:
+        super().__init__("Not", operand)
+
+    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
+        val = self._operand.evaluate(context, dump_eval)
+        if isinstance(val, bool):
+            result = not val
+        else:
+            raise TypeError("Type mismatch: Can't call operator 'not' on a non-bool.")
+        
+        if dump_eval is not None:
+            dump_eval.append(f"Evaluated: not {val} = {result}")
+
+        return result
 
 
-class BooleanLiteral(Node):
+class LiteralBoolean(Node):
     def __init__(self, value: bool) -> None:
+        super().__init__("Boolean")
         self._value = value
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> bool:
         if dump_eval is not None:
-            dump_eval.append(f"Boolean literal: {self._value}")
+            dump_eval.append(f"Boolean: {self._value}")
         return self._value
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"BooleanLiteral({self._value})") + "\n"
+        return ("  " * indent + f"Boolean({self._value})") + "\n"
 
 
-class NumericLiteral(Node):
+class LiteralNumber(Node):
     def __init__(self, value: str) -> None:
+        super().__init__("Number")
         self._value = float(value) if '.' in value else int(value)
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Union[int, float]:
         if dump_eval is not None:
-            dump_eval.append(f"Numeric literal: {self._value}")
+            dump_eval.append(f"Number: {self._value}")
         return self._value
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"NumericLiteral({self._value})") + "\n"
+        return ("  " * indent + f"Number({self._value})") + "\n"
+
+
+class LiteralString(Node):
+    def __init__(self, value: str) -> None:
+        super().__init__("String")
+        self._value = value
+
+    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> str:
+        if dump_eval is not None:
+            dump_eval.append(f"String: {self._value}")
+        return self._value
+
+    def dump_structure(self, indent: int = 0) -> str:
+        return ("  " * indent + f"String({self._value})") + "\n"
 
 
 class Variable(Node):
     def __init__(self, name: str) -> None:
+        super().__init__("Variable")
         self._name = name
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
@@ -189,23 +278,11 @@ class Variable(Node):
 
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Variable({self._name})") + "\n"
-
-
-class StringLiteral(Node):
-    def __init__(self, value: str) -> None:
-        self._value = value
-
-    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> str:
-        if dump_eval is not None:
-            dump_eval.append(f"String literal: {self._value}")
-        return self._value
-
-    def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"StringLiteral({self._value})") + "\n"
-
+    
 
 class FunctionCall(Node):
     def __init__(self, func_name: str, args: Optional[List[Node]] = None) -> None:
+        super().__init__("FunctionCall")
         if args is None:
             args = []
         self._func_name = func_name
@@ -251,7 +328,7 @@ TOKEN_REGEX = re.compile(r'''
         | -?\d+(?![A-Za-z_])                            # Integers (supports negative)
         | "[^"]*"                                       # Strings in double quotes
         | '[^']*'                                       # Strings in single quotes
-        | true|false|True|False                         # Boolean literals
+        | true|false|True|False                         # Booleans
     )\s*
 ''', re.VERBOSE)
 
@@ -290,50 +367,65 @@ class Parser:
     def _parse_or(self) -> Node:
         node: Node = self._parse_and()
         while self._match("or") or self._match("||"):
-            node = BinaryOp(node, "or", self._parse_and())
+            node = OpOr(node, self._parse_and())
         return node
 
     def _parse_and(self) -> Node:
         node: Node = self._parse_binary_op()
         while self._match("and") or self._match("&&"):
-            node = BinaryOp(node, "and", self._parse_binary_op())
+            node = OpAnd(node, self._parse_binary_op())
         return node
 
     def _parse_math_add_sub(self) -> Node:
         node: Node = self._parse_math_mul_div()
         while self._match("+", "-"):
             op: str = self._previous() or ""
-            node = BinaryOp(node, op, self._parse_math_mul_div())
+            if op=="+":
+                node = OpPlus(node, self._parse_math_mul_div())
+            else:
+                node = OpMinus(node, self._parse_math_mul_div())
         return node
 
     def _parse_math_mul_div(self) -> Node:
         node: Node = self._parse_unary_op()
         while self._match("*", "/"):
             op: str = self._previous() or ""
-            node = BinaryOp(node, op, self._parse_unary_op())
+            if op=="*":
+                node = OpMultiply(node, self._parse_unary_op())
+            else:
+                node = OpDivide(node, self._parse_unary_op())          
         return node
 
     def _parse_binary_op(self) -> Node:
         node: Node = self._parse_math_add_sub()
         while self._match("==", "!=", ">", "<", ">=", "<=", "="):
             op: str = self._previous() or ""
-            if op == "=":
-                op = "=="
-            node = BinaryOp(node, op, self._parse_math_add_sub())
+            if op == "=" or op == "==":
+                node = OpEquals(node, self._parse_math_add_sub())
+            elif op == "!=":
+                node = OpNotEquals(node, self._parse_math_add_sub())
+            elif op == ">":
+                node = OpGreaterThan(node, self._parse_math_add_sub())
+            elif op == "<":
+                node = OpLessThan(node, self._parse_math_add_sub())
+            elif op == ">=":
+                node = OpGreaterThanEquals(node, self._parse_math_add_sub())
+            elif op == "<=":
+                node = OpLessThanEquals(node, self._parse_math_add_sub())          
         return node
 
     def _parse_unary_op(self) -> Node:
         if self._match("not") or self._match("!"):
-            return UnaryOp("not", self._parse_unary_op())
+            return OpNot(self._parse_unary_op())
         elif self._match("-"):
-            return UnaryOp("-", self._parse_unary_op())
+            return OpNegative(self._parse_unary_op())
         return self._parse_term()
     
-    def _parse_string_literal(self) -> Optional[StringLiteral]:
+    def _parse_string_literal(self) -> Optional[LiteralString]:
         string_val = self._peek()
         if string_val and ((string_val.startswith('"') and string_val.endswith('"')) or (string_val.startswith("'") and string_val.endswith("'"))):
             self._advance()
-            return StringLiteral(string_val[1:-1])
+            return LiteralString(string_val[1:-1])
         return None
     
     def _parse_term(self) -> Node:
@@ -342,11 +434,11 @@ class Parser:
             self._consume(")")
             return node
         elif self._match("true") or self._match("True"):
-            return BooleanLiteral(True)
+            return LiteralBoolean(True)
         elif self._match("false") or self._match("False"):
-            return BooleanLiteral(False)
+            return LiteralBoolean(False)
         elif re.match(r'^-?\d+(\.\d+)?$', self._peek() or ""):
-            return NumericLiteral(self._advance() or "")
+            return LiteralNumber(self._advance() or "")
         
         string_val = self._parse_string_literal()
         if string_val is not None:

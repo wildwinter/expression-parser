@@ -1,3 +1,6 @@
+Explicit Ops
+Add write functionality
+
 Javascript
 C#
 cpp
