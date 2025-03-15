@@ -54,6 +54,7 @@ class TestWriter(unittest.TestCase):
             processed_lines.append(f'"{line}"')
 
             node = parser.parse(line)
+            
             processed_lines.append(node.write())
 
             processed_lines.append("")

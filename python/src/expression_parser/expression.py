@@ -12,8 +12,9 @@ STRING_FORMAT_ESCAPED_DOUBLEQUOTE = 3
 
 class ExpressionNode:
     @abstractmethod
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, precedence: int) -> None:
         self._name = name
+        self._precedence = precedence
 
     @abstractmethod
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
@@ -30,8 +31,8 @@ class ExpressionNode:
 
 class BinaryOp(ExpressionNode):
     @abstractmethod
-    def __init__(self, name: str, left: ExpressionNode, op: str, right: ExpressionNode) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, left: ExpressionNode, op: str, right: ExpressionNode, precedence: int) -> None:
+        super().__init__(name, precedence)
         self._left = left
         self._op = op
         self._right = right
@@ -57,28 +58,37 @@ class BinaryOp(ExpressionNode):
         return out
     
     def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        return f"{self._left.write(string_format)} {self._op} {self._right.write(string_format)}"
+        left_str = self._left.write(string_format)
+        right_str = self._right.write(string_format)
+
+        if self._left._precedence < self._precedence:
+            left_str = f"({left_str})"
+
+        if self._right._precedence < self._precedence:
+            right_str = f"({right_str})"
+
+        return f"{left_str} {self._op} {right_str}"
+    
+
+class OpOr(BinaryOp):
+    def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
+        super().__init__("Or", left, "or", right, 40)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_bool(left_val) or _make_bool(right_val)
     
 
 class OpAnd(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("And", left, "and", right)
+        super().__init__("And", left, "and", right, 50)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_bool(left_val) and _make_bool(right_val)
     
 
-class OpOr(BinaryOp):
-    def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Or", left, "or", right)
-
-    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
-        return _make_bool(left_val) or _make_bool(right_val)
-
-
 class OpEquals(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Equals", left, "==", right)
+        super().__init__("Equals", left, "==", right, 60)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         right_val = _make_type_match(left_val, right_val)
@@ -87,7 +97,7 @@ class OpEquals(BinaryOp):
 
 class OpNotEquals(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("NotEquals", left, "!=", right)
+        super().__init__("NotEquals", left, "!=", right, 60)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         right_val = _make_type_match(left_val, right_val)
@@ -96,7 +106,7 @@ class OpNotEquals(BinaryOp):
 
 class OpPlus(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Plus", left, "+", right)
+        super().__init__("Plus", left, "+", right, 70)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) + _make_numeric(right_val)
@@ -104,23 +114,15 @@ class OpPlus(BinaryOp):
 
 class OpMinus(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Minus", left, "-", right)
+        super().__init__("Minus", left, "-", right, 70)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) - _make_numeric(right_val)
-
-
-class OpMultiply(BinaryOp):
-    def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Multiply", left, "*", right)
-
-    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
-        return _make_numeric(left_val) * _make_numeric(right_val)
     
 
 class OpDivide(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("Divide", left, "/", right)
+        super().__init__("Divide", left, "/", right, 85)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         right_val = _make_numeric(right_val)
@@ -129,9 +131,17 @@ class OpDivide(BinaryOp):
         return _make_numeric(left_val) / right_val
 
 
+class OpMultiply(BinaryOp):
+    def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
+        super().__init__("Multiply", left, "*", right, 80)
+
+    def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
+        return _make_numeric(left_val) * _make_numeric(right_val)
+    
+
 class OpGreaterThan(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("GreaterThan", left, ">", right)
+        super().__init__("GreaterThan", left, ">", right, 60)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) > _make_numeric(right_val)
@@ -139,7 +149,7 @@ class OpGreaterThan(BinaryOp):
 
 class OpLessThan(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("LessThan", left, "<", right)
+        super().__init__("LessThan", left, "<", right, 60)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) < _make_numeric(right_val)
@@ -147,7 +157,7 @@ class OpLessThan(BinaryOp):
 
 class OpGreaterThanEquals(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("GreaterThanEquals", left, ">=", right)
+        super().__init__("GreaterThanEquals", left, ">=", right, 60)
     
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) >= _make_numeric(right_val)
@@ -155,7 +165,7 @@ class OpGreaterThanEquals(BinaryOp):
     
 class OpLessThanEquals(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
-        super().__init__("LessThanEquals", left, "<=", right)
+        super().__init__("LessThanEquals", left, "<=", right, 60)
 
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) <= _make_numeric(right_val)
@@ -163,8 +173,8 @@ class OpLessThanEquals(BinaryOp):
 
 class UnaryOp(ExpressionNode):
     @abstractmethod
-    def __init__(self, name: str, op: str, operand: ExpressionNode) -> None:
-        super().__init__(name)
+    def __init__(self, name: str, op: str, operand: ExpressionNode, precedence: int) -> None:
+        super().__init__(name, precedence)
         self._operand = operand
         self._op = op
 
@@ -187,12 +197,17 @@ class UnaryOp(ExpressionNode):
         return out
     
     def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        return self._op + self._operand.write(string_format)
+        operand_str = self._operand.write(string_format)
+
+        if self._operand._precedence < self._precedence:
+            operand_str = f"({operand_str})"
+    
+        return f"{self._op} {operand_str}"
     
 
 class OpNegative(UnaryOp):
     def __init__(self, operand: ExpressionNode) -> None:
-        super().__init__("Negative", "-", operand)
+        super().__init__("Negative", "-", operand, 90)
 
     def _do_eval(self, val: Any) -> Any:
         val = _make_numeric(val)
@@ -201,7 +216,7 @@ class OpNegative(UnaryOp):
 
 class OpNot(UnaryOp):
     def __init__(self, operand: ExpressionNode) -> None:
-        super().__init__("Not", "not", operand)
+        super().__init__("Not", "not", operand, 90)
 
     def _do_eval(self, val: Any) -> Any:
         val = _make_bool(val)
@@ -210,7 +225,7 @@ class OpNot(UnaryOp):
 
 class LiteralBoolean(ExpressionNode):
     def __init__(self, value: bool) -> None:
-        super().__init__("Boolean")
+        super().__init__("Boolean", 100)
         self._value = value
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> bool:
@@ -227,7 +242,7 @@ class LiteralBoolean(ExpressionNode):
 
 class LiteralNumber(ExpressionNode):
     def __init__(self, value: str) -> None:
-        super().__init__("Number")
+        super().__init__("Number", 100)
         self._value = float(value) if '.' in value else int(value)
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Union[int, float]:
@@ -244,7 +259,7 @@ class LiteralNumber(ExpressionNode):
 
 class LiteralString(ExpressionNode):
     def __init__(self, value: str) -> None:
-        super().__init__("String")
+        super().__init__("String", 100)
         self._value = value
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> str:
@@ -267,7 +282,7 @@ class LiteralString(ExpressionNode):
     
 class Variable(ExpressionNode):
     def __init__(self, name: str) -> None:
-        super().__init__("Variable")
+        super().__init__("Variable", 100)
         self._name = name
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
@@ -290,7 +305,7 @@ class Variable(ExpressionNode):
 
 class FunctionCall(ExpressionNode):
     def __init__(self, func_name: str, args: Optional[List[ExpressionNode]] = None) -> None:
-        super().__init__("FunctionCall")
+        super().__init__("FunctionCall", 100)
         if args is None:
             args = []
         self._func_name = func_name
