@@ -7,8 +7,8 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from expression_parser.expression import set_string_format, STRING_FORMAT_SINGLEQUOTE, STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE
 from expression_parser.parser import Parser
+from expression_parser.writer import Writer, STRING_FORMAT_SINGLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE, STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE
 
 class TestWriter(unittest.TestCase):
 
@@ -29,16 +29,16 @@ class TestWriter(unittest.TestCase):
 
         result = expression.write()
         self.assertEqual(result, "get_name() == 'fred' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        set_string_format(STRING_FORMAT_DOUBLEQUOTE)
+        Writer.string_format = STRING_FORMAT_DOUBLEQUOTE
         result = expression.write()
         self.assertEqual(result, "get_name() == \"fred\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        set_string_format(STRING_FORMAT_ESCAPED_DOUBLEQUOTE)
+        Writer.string_format = STRING_FORMAT_ESCAPED_DOUBLEQUOTE
         result = expression.write()
         self.assertEqual(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        set_string_format(STRING_FORMAT_ESCAPED_SINGLEQUOTE)
+        Writer.string_format = STRING_FORMAT_ESCAPED_SINGLEQUOTE
         result = expression.write()
         self.assertEqual(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        set_string_format(STRING_FORMAT_SINGLEQUOTE)
+        Writer.string_format = STRING_FORMAT_SINGLEQUOTE
 
     def test_writer(self):
 

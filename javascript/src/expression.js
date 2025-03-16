@@ -3,18 +3,10 @@
  * Copyright (c) 2025 Ian Thomas
  */
 
-export const StringFormat = Object.freeze({
-  SINGLEQUOTE: 0,
-  ESCAPED_SINGLEQUOTE: 1,
-  DOUBLEQUOTE: 2,
-  ESCAPED_DOUBLEQUOTE: 3,
-});
-
-let _STRING_FORMAT = StringFormat.SINGLEQUOTE;
-
-export function setStringFormat(newFormat) {
-  _STRING_FORMAT = newFormat;
-}
+import {
+  STRING_FORMAT,
+  Writer
+} from "./writer.js";
 
 export class ExpressionNode {
   constructor(name, precedence) {
@@ -432,14 +424,14 @@ function _make_type_match(left_val, right_val) {
 }
 
 function _format_string(val) {
-  switch (_STRING_FORMAT) {
-    case StringFormat.SINGLEQUOTE:
+  switch (Writer.StringFormat) {
+    case STRING_FORMAT.SINGLEQUOTE:
       return `'${val}'`;
-    case StringFormat.ESCAPED_SINGLEQUOTE:
+    case STRING_FORMAT.ESCAPED_SINGLEQUOTE:
       return `\\'${val}\\'`;
-    case StringFormat.ESCAPED_DOUBLEQUOTE:
+    case STRING_FORMAT.ESCAPED_DOUBLEQUOTE:
       return `\\"${val}\\"`;
-    case StringFormat.DOUBLEQUOTE:
+    case STRING_FORMAT.DOUBLEQUOTE:
     default:
       return `"${val}"`;
   }

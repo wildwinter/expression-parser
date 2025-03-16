@@ -4,7 +4,7 @@
 import {loadTestFile} from '../test/testUtils.js';
 import {strict as assert} from 'assert';
 import {ExpressionParser} from "../src/parser.js";
-import {setStringFormat, StringFormat} from "../src/expression.js";
+import {STRING_FORMAT, Writer} from "../src/writer.js";
 
 describe('Writer', () => {
 
@@ -16,16 +16,16 @@ describe('Writer', () => {
       
       let result = expression.write();
       assert.equal(result, "get_name() == 'fred' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.");
-      setStringFormat(StringFormat.DOUBLEQUOTE);
+      Writer.StringFormat = STRING_FORMAT.DOUBLEQUOTE;
       result = expression.write();
       assert.equal(result, "get_name() == \"fred\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.");
-      setStringFormat(StringFormat.ESCAPED_DOUBLEQUOTE);
+      Writer.StringFormat = STRING_FORMAT.ESCAPED_DOUBLEQUOTE;
       result = expression.write();
       assert.equal(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.");
-      setStringFormat(StringFormat.ESCAPED_SINGLEQUOTE);
+      Writer.StringFormat = STRING_FORMAT.ESCAPED_SINGLEQUOTE;
       result = expression.write();
       assert.equal(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.");
-      setStringFormat(StringFormat.SINGLEQUOTE);
+      Writer.StringFormat = STRING_FORMAT.SINGLEQUOTE;
     });
   });
 

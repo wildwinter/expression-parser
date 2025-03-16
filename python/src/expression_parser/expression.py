@@ -4,17 +4,7 @@
 import inspect
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Union
-
-STRING_FORMAT_SINGLEQUOTE = 0
-STRING_FORMAT_ESCAPED_SINGLEQUOTE = 1
-STRING_FORMAT_DOUBLEQUOTE = 2
-STRING_FORMAT_ESCAPED_DOUBLEQUOTE = 3
-
-_STRING_FORMAT = STRING_FORMAT_SINGLEQUOTE
-
-def set_string_format(string_format: int):
-    global _STRING_FORMAT
-    _STRING_FORMAT = string_format
+from .writer import Writer, STRING_FORMAT_SINGLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE, STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE
 
 class ExpressionNode:
     @abstractmethod
@@ -405,11 +395,11 @@ def _format_numeric(num: Union[int, float]) -> str:
     return str(num)
 
 def _format_string(val: str) -> str:
-    if _STRING_FORMAT==STRING_FORMAT_SINGLEQUOTE:
+    if Writer.string_format==STRING_FORMAT_SINGLEQUOTE:
         return f"'{val}'"
-    if _STRING_FORMAT==STRING_FORMAT_ESCAPED_SINGLEQUOTE:
+    if Writer.string_format==STRING_FORMAT_ESCAPED_SINGLEQUOTE:
         return f"\\'{val}\\'"
-    if _STRING_FORMAT==STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
+    if Writer.string_format==STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
         return f"\\\"{val}\\\""
     return f"\"{val}\""
 
