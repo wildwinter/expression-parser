@@ -68,14 +68,8 @@ class TestParser(unittest.TestCase):
                 node.evaluate(context, dump_eval)
                 processed_lines.append("\n".join(dump_eval))
                 
-            except TypeError as e:
-                processed_lines.append(f"TypeError: {e}")
-            except SyntaxError as e:
-                processed_lines.append(f"SyntaxError: {e}")
-            except RuntimeError as e:
-                processed_lines.append(f"RuntimeError: {e}")
-            except ZeroDivisionError as e:
-                processed_lines.append(f"ZeroDivisionError: {e}")
+            except Exception as e:
+                processed_lines.append(str(e))
 
             processed_lines.append("")
 

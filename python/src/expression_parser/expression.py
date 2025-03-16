@@ -43,7 +43,7 @@ class BinaryOp(ExpressionNode):
         result: Any = self._do_eval(left_val, right_val)
         
         if dump_eval is not None:
-            dump_eval.append(f"Evaluated: {left_val} {self._op} {right_val} = {result}")
+            dump_eval.append(f"Evaluated: {_format_value(left_val)} {self._op} {_format_value(right_val)} = {_format_value(result)}")
 
         return result
     
@@ -127,7 +127,7 @@ class OpDivide(BinaryOp):
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         right_val = _make_numeric(right_val)
         if right_val == 0:
-            raise ZeroDivisionError("Division by zero.")
+            raise ZeroDivisionError(f"Division by zero.")
         return _make_numeric(left_val) / right_val
 
 
@@ -183,7 +183,7 @@ class UnaryOp(ExpressionNode):
         result: Any = self._do_eval(val)
         
         if dump_eval is not None:
-            dump_eval.append(f"Evaluated: {self._op} {val} = {result}")
+            dump_eval.append(f"Evaluated: {self._op} {_format_value(val)} = {_format_value(result)}")
         
         return result
     
@@ -247,16 +247,14 @@ class LiteralNumber(ExpressionNode):
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> float:
         if dump_eval is not None:
-            dump_eval.append(f"Number: {self._value}")
+            dump_eval.append(f"Number: {_format_numeric(self._value)}")
         return self._value
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"Number({self._value})") + "\n"
+        return ("  " * indent + f"Number({_format_numeric(self._value)})") + "\n"
 
     def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        if int(self._value)==self._value:
-            return str(int(self._value))
-        return str(self._value)
+        return _format_numeric(self._value)
     
 
 class LiteralString(ExpressionNode):
@@ -295,7 +293,7 @@ class Variable(ExpressionNode):
             raise TypeError(f"Variable '{self._name}' must return bool, string, or numeric.")
         
         if dump_eval is not None:
-            dump_eval.append(f"Fetching variable: {self._name} -> {value}")
+            dump_eval.append(f"Fetching variable: {self._name} -> {_format_value(value)}")
         return value
 
     def dump_structure(self, indent: int = 0) -> str:
@@ -333,7 +331,7 @@ class FunctionCall(ExpressionNode):
             raise TypeError(f"Function '{self._func_name}' must return bool, string, or numeric.")
         
         if dump_eval is not None:
-            dump_eval.append(f"Calling function: {self._func_name}({arg_values}) = {result}")
+            dump_eval.append(f"Called function: {self._func_name}({arg_values}) = {_format_value(result)}")
 
         return result
 
@@ -394,3 +392,14 @@ def _make_type_match(left_val: Any, right_val: Any) -> Any:
     if isinstance(left_val, str):
         return _make_str(right_val)
     raise TypeError(f"Type mismatch: unrecognised type for '{left_val}'")
+
+
+def _format_numeric(num: Union[int, float]) -> str:
+    if isinstance(num, float) and int(num) == num:
+        return str(int(num))
+    return str(num)
+
+def _format_value(val: Any) -> str:
+    if isinstance(val, (int, float)):
+        return _format_numeric(val)
+    return str(val)

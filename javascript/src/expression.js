@@ -74,8 +74,6 @@ export class BinaryOp extends ExpressionNode {
   }
 }
 
-// Binary Operator export classes
-
 export class OpOr extends BinaryOp {
   constructor(left, right) {
     super("Or", left, "or", right, 40);
@@ -190,8 +188,6 @@ export class OpLessThanEquals extends BinaryOp {
   }
 }
 
-// Unary Operator export classes
-
 export class UnaryOp extends ExpressionNode {
   constructor(name, op, operand, precedence) {
     super(name, precedence);
@@ -245,8 +241,6 @@ export class OpNot extends UnaryOp {
   }
 }
 
-// Literal and Variable Nodes
-
 export class LiteralBoolean extends ExpressionNode {
   constructor(value) {
     super("Boolean", 100);
@@ -270,7 +264,7 @@ export class LiteralNumber extends ExpressionNode {
   constructor(value) {
     super("Number", 100);
     // Assuming value is provided as a string
-    this._value = value.includes('.') ? parseFloat(value) : parseInt(value, 10);
+    this._value = parseFloat(value);
   }
   evaluate(context, dump_eval) {
     if (dump_eval) {
@@ -382,8 +376,6 @@ export class FunctionCall extends ExpressionNode {
   }
 }
 
-// Helper functions
-
 function _make_bool(val) {
   if (typeof val === "boolean") {
     return val;
@@ -418,10 +410,6 @@ function _make_numeric(val) {
     return val;
   }
   if (typeof val === "string") {
-    const intVal = parseInt(val, 10);
-    if (!isNaN(intVal) && intVal.toString() === val) {
-      return intVal;
-    }
     const floatVal = parseFloat(val);
     if (!isNaN(floatVal)) {
       return floatVal;

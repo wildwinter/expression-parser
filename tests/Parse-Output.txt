@@ -1,88 +1,88 @@
 "true and 1"
 And
   Boolean(True)
-  Number(1.0)
+  Number(1)
 
 Boolean: True
-Number: 1.0
-Evaluated: True and 1.0 = True
+Number: 1
+Evaluated: True and 1 = True
 
 "0 && false"
 And
-  Number(0.0)
+  Number(0)
   Boolean(False)
 
-Number: 0.0
+Number: 0
 Boolean: False
-Evaluated: 0.0 and False = False
+Evaluated: 0 and False = False
 
 "1|| 2"
 Or
-  Number(1.0)
-  Number(2.0)
+  Number(1)
+  Number(2)
 
-Number: 1.0
-Number: 2.0
-Evaluated: 1.0 or 2.0 = True
+Number: 1
+Number: 2
+Evaluated: 1 or 2 = True
 
 " 1 or 0"
 Or
-  Number(1.0)
-  Number(0.0)
+  Number(1)
+  Number(0)
 
-Number: 1.0
-Number: 0.0
-Evaluated: 1.0 or 0.0 = True
+Number: 1
+Number: 0
+Evaluated: 1 or 0 = True
 
 "0 or true"
 Or
-  Number(0.0)
+  Number(0)
   Boolean(True)
 
-Number: 0.0
+Number: 0
 Boolean: True
-Evaluated: 0.0 or True = True
+Evaluated: 0 or True = True
 
 "function()"
 FunctionCall(function)
 
-RuntimeError: Function 'function' not found in context.
+Function 'function' not found in context.
 
 "1>1"
 GreaterThan
-  Number(1.0)
-  Number(1.0)
+  Number(1)
+  Number(1)
 
-Number: 1.0
-Number: 1.0
-Evaluated: 1.0 > 1.0 = False
+Number: 1
+Number: 1
+Evaluated: 1 > 1 = False
 
 "1!=1"
 NotEquals
-  Number(1.0)
-  Number(1.0)
+  Number(1)
+  Number(1)
 
-Number: 1.0
-Number: 1.0
-Evaluated: 1.0 != 1.0 = False
+Number: 1
+Number: 1
+Evaluated: 1 != 1 = False
 
 "0!=1"
 NotEquals
-  Number(0.0)
-  Number(1.0)
+  Number(0)
+  Number(1)
 
-Number: 0.0
-Number: 1.0
-Evaluated: 0.0 != 1.0 = True
+Number: 0
+Number: 1
+Evaluated: 0 != 1 = True
 
 "0<1"
 LessThan
-  Number(0.0)
-  Number(1.0)
+  Number(0)
+  Number(1)
 
-Number: 0.0
-Number: 1.0
-Evaluated: 0.0 < 1.0 = True
+Number: 0
+Number: 1
+Evaluated: 0 < 1 = True
 
 "not true"
 Not
@@ -94,59 +94,59 @@ Evaluated: not True = False
 "1==1 and 1>0"
 And
   Equals
-    Number(1.0)
-    Number(1.0)
+    Number(1)
+    Number(1)
   GreaterThan
-    Number(1.0)
-    Number(0.0)
+    Number(1)
+    Number(0)
 
-Number: 1.0
-Number: 1.0
-Evaluated: 1.0 == 1.0 = True
-Number: 1.0
-Number: 0.0
-Evaluated: 1.0 > 0.0 = True
+Number: 1
+Number: 1
+Evaluated: 1 == 1 = True
+Number: 1
+Number: 0
+Evaluated: 1 > 0 = True
 Evaluated: True and True = True
 
 "(2 or 1) and (end_func()==17) or 17=="17""
 Or
   And
     Or
-      Number(2.0)
-      Number(1.0)
+      Number(2)
+      Number(1)
     Equals
       FunctionCall(end_func)
-      Number(17.0)
+      Number(17)
   Equals
-    Number(17.0)
+    Number(17)
     String(17)
 
-Number: 2.0
-Number: 1.0
-Evaluated: 2.0 or 1.0 = True
-Calling function: end_func([]) = True
-Number: 17.0
-Evaluated: True == 17.0 = True
+Number: 2
+Number: 1
+Evaluated: 2 or 1 = True
+Called function: end_func([]) = True
+Number: 17
+Evaluated: True == 17 = True
 Evaluated: True and True = True
-Number: 17.0
+Number: 17
 String: 17
-Evaluated: 17.0 == 17 = True
+Evaluated: 17 == 17 = True
 Evaluated: True or True = True
 
 "(2 or 1) and (end_func()==17) or 17=="17a""
 Or
   And
     Or
-      Number(2.0)
-      Number(1.0)
+      Number(2)
+      Number(1)
     Equals
       FunctionCall(end_func)
-      Number(17.0)
+      Number(17)
   Equals
-    Number(17.0)
+    Number(17)
     String(17a)
 
-TypeError: Type mismatch: Expecting number but got '17a'
+Type mismatch: Expecting number but got '17a'
 
 "!true"
 Not
@@ -158,20 +158,20 @@ Evaluated: not True = False
 "fab00"
 Variable(fab00)
 
-RuntimeError: Variable 'fab00' not found in context.
+Variable 'fab00' not found in context.
 
 "(buck"
-SyntaxError: Expected ')' but expression ended.
+Expected ')' but expression ended.
 
 "*www"
-SyntaxError: Unexpected token: *
+Unexpected token: *
 
 "Weeble*2"
 Multiply
   Variable(Weeble)
-  Number(2.0)
+  Number(2)
 
-RuntimeError: Variable 'Weeble' not found in context.
+Variable 'Weeble' not found in context.
 
 "not C"
 Not
@@ -190,46 +190,46 @@ Evaluated: not False = True
 "E"
 Variable(E)
 
-RuntimeError: Variable 'E' not found in context.
+Variable 'E' not found in context.
 
 "101=101.1"
 Equals
-  Number(101.0)
+  Number(101)
   Number(101.1)
 
-Number: 101.0
+Number: 101
 Number: 101.1
-Evaluated: 101.0 == 101.1 = False
+Evaluated: 101 == 101.1 = False
 
 "101==101.0"
 Equals
-  Number(101.0)
-  Number(101.0)
+  Number(101)
+  Number(101)
 
-Number: 101.0
-Number: 101.0
-Evaluated: 101.0 == 101.0 = True
+Number: 101
+Number: 101
+Evaluated: 101 == 101 = True
 
 "!10!=9"
 NotEquals
   Not
-    Number(10.0)
-  Number(9.0)
+    Number(10)
+  Number(9)
 
-Number: 10.0
-Evaluated: not 10.0 = False
-Number: 9.0
-Evaluated: False != 9.0 = True
+Number: 10
+Evaluated: not 10 = False
+Number: 9
+Evaluated: False != 9 = True
 
 "!(10!=9)"
 Not
   NotEquals
-    Number(10.0)
-    Number(9.0)
+    Number(10)
+    Number(9)
 
-Number: 10.0
-Number: 9.0
-Evaluated: 10.0 != 9.0 = True
+Number: 10
+Number: 9
+Evaluated: 10 != 9 = True
 Evaluated: not True = False
 
 "get_name()=="fred""
@@ -237,7 +237,7 @@ Equals
   FunctionCall(get_name)
   String(fred)
 
-Calling function: get_name([]) = fred
+Called function: get_name([]) = fred
 String: fred
 Evaluated: fred == fred = True
 
@@ -245,18 +245,18 @@ Evaluated: fred == fred = True
 FunctionCall(get_name)
   String(jim)
 
-RuntimeError: Function 'get_name' does not support the provided arguments ['jim'].
+Function 'get_name' does not support the provided arguments ['jim'].
 
 "whisky("test",7)=="7whisky_test""
 Equals
   FunctionCall(whisky)
     String(test)
-    Number(7.0)
+    Number(7)
   String(7whisky_test)
 
 String: test
-Number: 7.0
-Calling function: whisky(['test', 7.0]) = 7.0whisky_test
+Number: 7
+Called function: whisky(['test', 7.0]) = 7.0whisky_test
 String: 7whisky_test
 Evaluated: 7.0whisky_test == 7whisky_test = False
 
@@ -264,12 +264,12 @@ Evaluated: 7.0whisky_test == 7whisky_test = False
 Equals
   FunctionCall(whisky)
     String(test)
-    Number(7.0)
+    Number(7)
   String(7whisky_test)
 
 String: test
-Number: 7.0
-Calling function: whisky(['test', 7.0]) = 7.0whisky_test
+Number: 7
+Called function: whisky(['test', 7.0]) = 7.0whisky_test
 String: 7whisky_test
 Evaluated: 7.0whisky_test == 7whisky_test = False
 
@@ -282,7 +282,7 @@ String: try a string with spaces
 FunctionCall(funable)
   String(boo)
 
-RuntimeError: Function 'funable' not found in context.
+Function 'funable' not found in context.
 
 "("testing" && ("nesting" or "bucket"))"
 And
@@ -312,79 +312,79 @@ Evaluated: True and True = True
 
 "-1"
 Negative
-  Number(1.0)
+  Number(1)
 
-Number: 1.0
-Evaluated: - 1.0 = -1.0
+Number: 1
+Evaluated: - 1 = -1
 
 "-1.0"
 Negative
-  Number(1.0)
+  Number(1)
 
-Number: 1.0
-Evaluated: - 1.0 = -1.0
+Number: 1
+Evaluated: - 1 = -1
 
 "5-1"
 Minus
-  Number(5.0)
-  Number(1.0)
+  Number(5)
+  Number(1)
 
-Number: 5.0
-Number: 1.0
-Evaluated: 5.0 - 1.0 = 4.0
+Number: 5
+Number: 1
+Evaluated: 5 - 1 = 4
 
 "5 + 3 * 2"
 Plus
-  Number(5.0)
+  Number(5)
   Multiply
-    Number(3.0)
-    Number(2.0)
+    Number(3)
+    Number(2)
 
-Number: 5.0
-Number: 3.0
-Number: 2.0
-Evaluated: 3.0 * 2.0 = 6.0
-Evaluated: 5.0 + 6.0 = 11.0
+Number: 5
+Number: 3
+Number: 2
+Evaluated: 3 * 2 = 6
+Evaluated: 5 + 6 = 11
 
 "10 / 2 + 3"
 Plus
   Divide
-    Number(10.0)
-    Number(2.0)
-  Number(3.0)
+    Number(10)
+    Number(2)
+  Number(3)
 
-Number: 10.0
-Number: 2.0
-Evaluated: 10.0 / 2.0 = 5.0
-Number: 3.0
-Evaluated: 5.0 + 3.0 = 8.0
+Number: 10
+Number: 2
+Evaluated: 10 / 2 = 5
+Number: 3
+Evaluated: 5 + 3 = 8
 
 ""hello" + "world""
 Plus
   String(hello)
   String(world)
 
-TypeError: Type mismatch: Expecting number but got 'hello'
+Type mismatch: Expecting number but got 'hello'
 
 "3 > 2 + 1"
 GreaterThan
-  Number(3.0)
+  Number(3)
   Plus
-    Number(2.0)
-    Number(1.0)
+    Number(2)
+    Number(1)
 
-Number: 3.0
-Number: 2.0
-Number: 1.0
-Evaluated: 2.0 + 1.0 = 3.0
-Evaluated: 3.0 > 3.0 = False
+Number: 3
+Number: 2
+Number: 1
+Evaluated: 2 + 1 = 3
+Evaluated: 3 > 3 = False
 
 "5 / 0"
 Divide
-  Number(5.0)
-  Number(0.0)
+  Number(5)
+  Number(0)
 
-ZeroDivisionError: Division by zero.
+Division by zero.
 
 "-True"
 Negative
@@ -395,96 +395,96 @@ Evaluated: - True = -1
 
 "!5"
 Not
-  Number(5.0)
+  Number(5)
 
-Number: 5.0
-Evaluated: not 5.0 = False
+Number: 5
+Evaluated: not 5 = False
 
 "(6 + 2) * 5"
 Multiply
   Plus
-    Number(6.0)
-    Number(2.0)
-  Number(5.0)
+    Number(6)
+    Number(2)
+  Number(5)
 
-Number: 6.0
-Number: 2.0
-Evaluated: 6.0 + 2.0 = 8.0
-Number: 5.0
-Evaluated: 8.0 * 5.0 = 40.0
+Number: 6
+Number: 2
+Evaluated: 6 + 2 = 8
+Number: 5
+Evaluated: 8 * 5 = 40
 
 "6 / 4 * 3 >= 7 * 2"
 GreaterThanEquals
   Multiply
     Divide
-      Number(6.0)
-      Number(4.0)
-    Number(3.0)
+      Number(6)
+      Number(4)
+    Number(3)
   Multiply
-    Number(7.0)
-    Number(2.0)
+    Number(7)
+    Number(2)
 
-Number: 6.0
-Number: 4.0
-Evaluated: 6.0 / 4.0 = 1.5
-Number: 3.0
-Evaluated: 1.5 * 3.0 = 4.5
-Number: 7.0
-Number: 2.0
-Evaluated: 7.0 * 2.0 = 14.0
-Evaluated: 4.5 >= 14.0 = False
+Number: 6
+Number: 4
+Evaluated: 6 / 4 = 1.5
+Number: 3
+Evaluated: 1.5 * 3 = 4.5
+Number: 7
+Number: 2
+Evaluated: 7 * 2 = 14
+Evaluated: 4.5 >= 14 = False
 
 "6 / 4 * (3 >= 7) * 2"
 Multiply
   Multiply
     Divide
-      Number(6.0)
-      Number(4.0)
+      Number(6)
+      Number(4)
     GreaterThanEquals
-      Number(3.0)
-      Number(7.0)
-  Number(2.0)
+      Number(3)
+      Number(7)
+  Number(2)
 
-Number: 6.0
-Number: 4.0
-Evaluated: 6.0 / 4.0 = 1.5
-Number: 3.0
-Number: 7.0
-Evaluated: 3.0 >= 7.0 = False
-Evaluated: 1.5 * False = 0.0
-Number: 2.0
-Evaluated: 0.0 * 2.0 = 0.0
+Number: 6
+Number: 4
+Evaluated: 6 / 4 = 1.5
+Number: 3
+Number: 7
+Evaluated: 3 >= 7 = False
+Evaluated: 1.5 * False = 0
+Number: 2
+Evaluated: 0 * 2 = 0
 
 "6 / (4 * (3 >= 7)) * 2"
 Multiply
   Divide
-    Number(6.0)
+    Number(6)
     Multiply
-      Number(4.0)
+      Number(4)
       GreaterThanEquals
-        Number(3.0)
-        Number(7.0)
-  Number(2.0)
+        Number(3)
+        Number(7)
+  Number(2)
 
-ZeroDivisionError: Division by zero.
+Division by zero.
 
 "6 / (4 * 3 >= 7) * 2"
 Multiply
   Divide
-    Number(6.0)
+    Number(6)
     GreaterThanEquals
       Multiply
-        Number(4.0)
-        Number(3.0)
-      Number(7.0)
-  Number(2.0)
+        Number(4)
+        Number(3)
+      Number(7)
+  Number(2)
 
-Number: 6.0
-Number: 4.0
-Number: 3.0
-Evaluated: 4.0 * 3.0 = 12.0
-Number: 7.0
-Evaluated: 12.0 >= 7.0 = True
-Evaluated: 6.0 / True = 6.0
-Number: 2.0
-Evaluated: 6.0 * 2.0 = 12.0
+Number: 6
+Number: 4
+Number: 3
+Evaluated: 4 * 3 = 12
+Number: 7
+Evaluated: 12 >= 7 = True
+Evaluated: 6 / True = 6
+Number: 2
+Evaluated: 6 * 2 = 12
