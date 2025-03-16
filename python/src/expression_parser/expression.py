@@ -243,9 +243,9 @@ class LiteralBoolean(ExpressionNode):
 class LiteralNumber(ExpressionNode):
     def __init__(self, value: str) -> None:
         super().__init__("Number", 100)
-        self._value = float(value) if '.' in value else int(value)
+        self._value = float(value)
 
-    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Union[int, float]:
+    def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> float:
         if dump_eval is not None:
             dump_eval.append(f"Number: {self._value}")
         return self._value
@@ -254,6 +254,8 @@ class LiteralNumber(ExpressionNode):
         return ("  " * indent + f"Number({self._value})") + "\n"
 
     def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+        if int(self._value)==self._value:
+            return str(int(self._value))
         return str(self._value)
     
 
@@ -371,19 +373,16 @@ def _make_str(val: Any) -> str:
     raise TypeError(f"Type mismatch: Expecting string but got '{val}'")
 
 
-def _make_numeric(val: Any) -> Union[int, float]:
+def _make_numeric(val: Any) -> float:
     if isinstance(val, bool):
         return 1 if val else 0
     if isinstance(val, (float, int)):
-        return val
+        return float(val)
     if isinstance(val, str):
         try:
-            return int(val)
+            return float(val)
         except ValueError:
-            try:
-                return float(val)
-            except ValueError:
-                pass
+            pass
     raise TypeError(f"Type mismatch: Expecting number but got '{val}'")
 
 

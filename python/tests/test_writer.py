@@ -28,13 +28,13 @@ class TestWriter(unittest.TestCase):
         expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0")
         
         result = expression.write()
-        self.assertEqual(result, "get_name() == 'fred' and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        self.assertEqual(result, "get_name() == 'fred' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
         result = expression.write(string_format=STRING_FORMAT_DOUBLEQUOTE)
-        self.assertEqual(result, "get_name() == \"fred\" and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        self.assertEqual(result, "get_name() == \"fred\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
         result = expression.write(string_format=STRING_FORMAT_ESCAPED_DOUBLEQUOTE)
-        self.assertEqual(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        self.assertEqual(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
         result = expression.write(string_format=STRING_FORMAT_ESCAPED_SINGLEQUOTE)
-        self.assertEqual(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5.0 != 0", "Expression doesn't match.")
+        self.assertEqual(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
 
     def test_writer(self):
 
