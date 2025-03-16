@@ -9,7 +9,6 @@
 #include <iostream>
 #include <locale>
 
-// Function definition
 std::string loadTestFile(const std::string& filepath) {
     std::string path = std::filesystem::absolute("../../tests/" + filepath).string();
     std::ifstream file(path, std::ios::in); // Open file for reading
@@ -22,4 +21,14 @@ std::string loadTestFile(const std::string& filepath) {
     std::ostringstream content;
     content << file.rdbuf(); // Read the entire file content
     return content.str();
+}
+
+std::string joinStrings(std::vector<std::string>& strList, std::string join) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < strList.size(); i++) {
+        if (i > 0)
+            oss << join;
+        oss << strList[i];
+    }
+    return oss.str();
 }

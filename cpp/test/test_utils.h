@@ -6,7 +6,6 @@
 
 #include <string>
 
-// Function declaration
 std::string loadTestFile(const std::string& filepath);
-
+std::string joinStrings(std::vector<std::string>& strList, std::string join);
 #endif

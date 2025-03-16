@@ -1,4 +1,5 @@
 #include "expression_parser/expression.h"
+#include "expression_parser/writer.h"
 #include <sstream>
 #include <cmath>
 #include <stdexcept>
@@ -34,11 +35,17 @@ double MakeNumeric(const std::any &val) {
     if (val.type() == typeid(double))
         return std::any_cast<double>(val);
     if (val.type() == typeid(std::string)) {
+        const std::string &s = std::any_cast<std::string>(val);
+        size_t pos = 0;
+        double result = 0.0;
         try {
-            return std::stod(std::any_cast<std::string>(val));
+            result = std::stod(s, &pos);
         } catch (...) {
-            throw std::runtime_error("Type mismatch: Expecting number but got invalid string");
+            throw std::runtime_error("Type mismatch: Expecting number but got '" + s + "'");
         }
+        if (pos != s.size())
+            throw std::runtime_error("Type mismatch: Expecting number but got '" + s +"'");
+        return result;
     }
     throw std::runtime_error("Type mismatch: Expecting number");
 }
@@ -95,8 +102,18 @@ std::string FormatNumeric(double num) {
 }
 
 std::string FormatString(const std::string &val) {
-    // Here we assume a default of double quotes. (You can later adjust to use a global Writer setting.)
-    return "\"" + val + "\"";
+    switch (Writer::getStringFormat())
+    {
+        case STRING_FORMAT::SINGLEQUOTE:
+            return "'"+val+"'";
+        case STRING_FORMAT::ESCAPED_SINGLEQUOTE:
+            return "\\'"+val+"\\'";
+        case STRING_FORMAT::ESCAPED_DOUBLEQUOTE:
+            return "\\\""+val+"\\\"";
+        case STRING_FORMAT::DOUBLEQUOTE:
+        default:
+            return "\""+val+"\"";
+    }
 }
 
 std::string FormatValue(const std::any &val) {
@@ -390,9 +407,7 @@ std::any FunctionCall::Evaluate(const Context &context, std::vector<std::string>
             formattedArgs += Utils::FormatValue(val) + ", ";
         if (!formattedArgs.empty())
             formattedArgs = formattedArgs.substr(0, formattedArgs.size() - 2);
-        throw std::runtime_error("Function '" + funcName + "' expects " + std::to_string(wrapper.arity) +
-                                  " arguments, but received " + std::to_string(argValues.size()) +
-                                  ". Provided arguments: (" + formattedArgs + ").");
+        throw std::runtime_error("Function '" + funcName + "' does not support the provided arguments (" + formattedArgs + ").");
     }
     
     std::any result = wrapper.func(argValues);
