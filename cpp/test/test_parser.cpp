@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Ian Thomas
 
 #include "expression_parser/parser.h"
-#include <catch_amalgamated.hpp>
+#include "catch_amalgamated.hpp"
 #include "test_utils.h"
 
 using namespace ExpressionParser;
