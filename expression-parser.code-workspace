@@ -70,7 +70,9 @@
             "variant": "cpp",
             "algorithm": "cpp",
             "ranges": "cpp",
-            "span": "cpp"
+            "span": "cpp",
+            "any": "cpp",
+            "filesystem": "cpp"
         }
     }
 }
