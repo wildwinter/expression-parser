@@ -1,659 +1,280 @@
-// This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
-// Copyright (c) 2024 Ian Thomas
-
 using System.Text.RegularExpressions;
 
-namespace Fountain;
-
-public class Parser
+namespace ExpressionParser
 {
-    public Script Script { get; private set; }
-    public bool MergeActions = true;
-    public bool MergeDialogue = true;
-    public bool UseTags = false;
-
-    public Parser()
+    // Custom exception to mirror Python's SyntaxError.
+    public class SyntaxErrorException : Exception
     {
-        Script = new Script();
-        _pending = new List<PendingElement>();
-        _padActions = new List<Action>();
+        public SyntaxErrorException(string message) : base(message) { }
     }
 
-    // Expects \n separated UTF8 text. Splits into individual lines, adds them one by one
-    public virtual void AddText(string inputText)
+    public class Parser
     {
-        var lines = inputText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-        AddLines(lines);
-    }
+        private List<string> _tokens;
+        private int _pos;
 
-    // Add an array of UTF8 lines.
-    public virtual void AddLines(string[] lines)
-    {
-        foreach (var line in lines)
+        // This regex corresponds to the Python TOKEN_REGEX with VERBOSE mode.
+        // The regex uses a verbatim string literal (@) so backslashes don't need double escaping.
+        private static readonly Regex TOKEN_REGEX = new Regex(@"
+            \s*(
+                >=|<=|==|=|!=|>|<|\(|\)|,|and|&&|or|\|\||not|!      # Operators & keywords
+                | \+|\-|\/|\*                                      # Maths operators
+                | [A-Za-z_][A-Za-z0-9_]*                           # Identifiers (Variables & Functions)
+                | -?\d+\.\d+(?![A-Za-z_])                          # Floating-point numbers (supports negative)
+                | -?\d+(?![A-Za-z_])                               # Integers (supports negative)
+                | ""[^""]*""                                      # Strings in double quotes
+                | '[^']*'                                        # Strings in single quotes
+                | true|false|True|False                           # Booleans
+            )\s*
+        ", RegexOptions.IgnorePatternWhitespace);
+
+        public Parser()
         {
-            AddLine(line);
-        }
-        FinalizeParsing();
-    }
-
-    // Add an individual line.
-    public virtual void AddLine(string inputLine)
-    {
-        _lastLine = _line;
-        _lastLineEmpty = string.IsNullOrWhiteSpace(_line);
-
-        _line = inputLine;
-
-        if (ParseBoneyard()) return;
-        if (ParseNotes()) return;
-
-        List<string> newTags = [];
-        if (this.UseTags) {
-            var tagInfo = this.ExtractTags(inputLine);
-            newTags = tagInfo.tags;
-            this._line = tagInfo.untagged;
+            _tokens = new List<string>();
+            _pos = 0;
         }
 
-        _lineTrim = _line.Trim();
-
-        if (_pending.Count > 0) ParsePending();
-
-        this._lineTags = newTags;
-
-        if (_inTitlePage && ParseTitlePage()) return;
-
-        if (ParseSection()) return;
-        if (ParseForcedAction()) return;
-        if (ParseForcedSceneHeading()) return;
-        if (ParseForcedCharacter()) return;
-        if (ParseForcedTransition()) return;
-        if (ParsePageBreak()) return;
-        if (ParseLyrics()) return;
-        if (ParseSynopsis()) return;
-        if (ParseCenteredAction()) return;
-        if (ParseSceneHeading()) return;
-        if (ParseTransition()) return;
-        if (ParseParenthetical()) return;
-        if (ParseCharacter()) return;
-        if (ParseDialogue()) return;
-
-        ParseAction();
-    }
-
-    // Call this when you're sure you're done calling a series of addLine()! Some to-be-decided lines may get added.
-    public void FinalizeParsing()
-    {
-        _line = "";
-        _lineTrim = "";
-        ParsePending();
-    }
-
-    protected bool _inTitlePage = true;
-    protected bool _inDialogue = false;
-    protected string _line="";
-    protected string _lineTrim="";
-
-    private bool _multiLineTitleEntry = false;
-    private string _lineBeforeBoneyard="";
-    private Boneyard? _currentBoneyard;
-    private string _lineBeforeNote="";
-    private Note? _currentNote;
-    private List<PendingElement> _pending;
-    private List<Action> _padActions;
-    private bool _lastLineEmpty;
-    private string _lastLine="";
-    private List<string> _lineTags = [];
-
-    private Element? GetLastElement()
-    {
-        if (Script.Elements.Count > 0)
-            return Script.Elements[^1];
-        return null;
-    }
-
-    private void AddElement(Element element)
-    {
-        element.AppendTags(this._lineTags);
-        this._lineTags = [];
-
-        var lastElement = GetLastElement();
-
-        if (element.Type == ElementType.ACTION && string.IsNullOrWhiteSpace(element.TextRaw) && !((Action)element).Centered)
+        public ExpressionNode Parse(string expression)
         {
-            _inDialogue = false;
+            _tokens = Tokenize(expression);
+            _pos = 0;
+            ExpressionNode node = ParseOr();
 
-            if (lastElement != null && lastElement.Type == ElementType.ACTION)
-            {   
-                _padActions.Add((Action)element);
-                return;
-            }
-            return;
+            if (_pos < _tokens.Count)
+                throw new SyntaxErrorException($"Unexpected token '{_tokens[_pos]}' at position {_pos}");
+
+            return node;
         }
 
-        if (element.Type == ElementType.ACTION && _padActions.Count > 0)
+        public List<string> Tokenize(string expression)
         {
-            if (MergeActions && lastElement is Action lastAction && !lastAction.Centered)
+            List<string> tokens = new List<string>();
+            int pos = 0;
+
+            while (pos < expression.Length)
             {
-                foreach (var padAction in _padActions)
+                Match match = TOKEN_REGEX.Match(expression, pos);
+                if (!match.Success)
                 {
-                    lastElement.AppendLine(padAction.TextRaw);
-                    lastElement.AppendTags(padAction.Tags);
+                    throw new SyntaxErrorException($"Unrecognized token at position {pos}: '{expression.Substring(pos)}'");
                 }
+
+                string token = match.Groups[1].Value.Trim();
+                if (!string.IsNullOrEmpty(token))
+                    tokens.Add(token);
+
+                pos = match.Index + match.Length;
             }
-            else
-            {
-                foreach (var padAction in _padActions)
-                {
-                    Script.Elements.Add(padAction);
-                }
-            }
+
+            return tokens;
         }
 
-        _padActions.Clear();
-
-        if (MergeActions && element is Action action && !action.Centered)
+        private ExpressionNode ParseOr()
         {
-            if (lastElement is Action lastAction && !lastAction.Centered)
+            ExpressionNode node = ParseAnd();
+            while (_Match("or") || _Match("||"))
             {
-                lastAction.AppendLine(element.TextRaw);
-                lastAction.AppendTags(element.Tags);
-                return;
+                node = new OpOr(node, ParseAnd());
             }
+            return node;
         }
 
-        Script.Elements.Add(element);
-
-        _inDialogue = element.Type == ElementType.CHARACTER || element.Type == ElementType.PARENTHETICAL || element.Type == ElementType.DIALOGUE;
-    }
-
-    private void ParsePending()
-    {
-        foreach (var pendingItem in _pending)
+        private ExpressionNode ParseAnd()
         {
-            pendingItem.Element.AppendTags(this._lineTags);
-            pendingItem.Backup.AppendTags(this._lineTags);
-            this._lineTags = [];
-
-            if (pendingItem.Type == ElementType.TRANSITION)
+            ExpressionNode node = ParseBinaryOp();
+            while (_Match("and") || _Match("&&"))
             {
-                if (string.IsNullOrWhiteSpace(_lineTrim))
-                {
-                    AddElement(pendingItem.Element);
-                }
+                node = new OpAnd(node, ParseBinaryOp());
+            }
+            return node;
+        }
+
+        private ExpressionNode ParseMathAddSub()
+        {
+            ExpressionNode node = ParseMathMulDiv();
+            while (_Match("+", "-"))
+            {
+                string? op = _Previous();
+                if (op == "+")
+                    node = new OpPlus(node, ParseMathMulDiv());
                 else
-                {
-                    AddElement(pendingItem.Backup);
-                }
+                    node = new OpMinus(node, ParseMathMulDiv());
             }
-            else if (pendingItem.Type == ElementType.CHARACTER)
+            return node;
+        }
+
+        private ExpressionNode ParseMathMulDiv()
+        {
+            ExpressionNode node = ParseUnaryOp();
+            while (_Match("*", "/"))
             {
-                if (!string.IsNullOrWhiteSpace(_lineTrim))
-                {
-                    AddElement(pendingItem.Element);
-                }
+                string? op = _Previous();
+                if (op == "*")
+                    node = new OpMultiply(node, ParseUnaryOp());
                 else
+                    node = new OpDivide(node, ParseUnaryOp());
+            }
+            return node;
+        }
+
+        private ExpressionNode ParseBinaryOp()
+        {
+            ExpressionNode node = ParseMathAddSub();
+            while (_Match("==", "!=", ">", "<", ">=", "<=", "="))
+            {
+                string? op = _Previous();
+                if (op == "=" || op == "==")
+                    node = new OpEquals(node, ParseMathAddSub());
+                else if (op == "!=")
+                    node = new OpNotEquals(node, ParseMathAddSub());
+                else if (op == ">")
+                    node = new OpGreaterThan(node, ParseMathAddSub());
+                else if (op == "<")
+                    node = new OpLessThan(node, ParseMathAddSub());
+                else if (op == ">=")
+                    node = new OpGreaterThanEquals(node, ParseMathAddSub());
+                else if (op == "<=")
+                    node = new OpLessThanEquals(node, ParseMathAddSub());
+            }
+            return node;
+        }
+
+        private ExpressionNode ParseUnaryOp()
+        {
+            if (_Match("not") || _Match("!"))
+            {
+                return new OpNot(ParseUnaryOp());
+            }
+            else if (_Match("-"))
+            {
+                return new OpNegative(ParseUnaryOp());
+            }
+            return ParseTerm();
+        }
+
+        // Returns a LiteralString node if the current token is a string literal, or null otherwise.
+        private LiteralString? ParseStringLiteral()
+        {
+            string? stringVal = _Peek();
+            if (!string.IsNullOrEmpty(stringVal) &&
+                ((stringVal.StartsWith("\"") && stringVal.EndsWith("\"")) ||
+                 (stringVal.StartsWith("'") && stringVal.EndsWith("'"))))
+            {
+                _Advance();
+                // Remove the first and last character (the quotes)
+                return new LiteralString(stringVal.Substring(1, stringVal.Length - 2));
+            }
+            return null;
+        }
+
+        private ExpressionNode ParseTerm()
+        {
+            if (_Match("("))
+            {
+                ExpressionNode node = ParseOr();
+                _Consume(")");
+                return node;
+            }
+            else if (_Match("true") || _Match("True"))
+            {
+                return new LiteralBoolean(true);
+            }
+            else if (_Match("false") || _Match("False"))
+            {
+                return new LiteralBoolean(false);
+            }
+            // Check if the token matches a number pattern.
+            else if (Regex.IsMatch(_Peek() ?? "", @"^-?\d+(\.\d+)?$"))
+            {
+                return new LiteralNumber(_Advance()!);
+            }
+
+            LiteralString? stringLiteral = ParseStringLiteral();
+            if (stringLiteral != null)
+                return stringLiteral;
+
+            string? identifier = _MatchIdentifier();
+            if (!string.IsNullOrEmpty(identifier))
+            {
+                if (_Match("("))
                 {
-                    AddElement(pendingItem.Backup);
+                    List<ExpressionNode> args = new List<ExpressionNode>();
+                    if (!_Match(")"))
+                    {
+                        args.Add(ParseOr());
+                        while (_Match(","))
+                        {
+                            args.Add(ParseOr());
+                        }
+                        _Consume(")");
+                    }
+                    return new FunctionCall(identifier, args);
                 }
+                return new Variable(identifier);
             }
-        }
-        _pending.Clear();
-    }
 
-    private bool ParseTitlePage()
-    {
-        var regexTitleEntry = new Regex(@"^\s*([A-Za-z0-9 ]+?)\s*:\s*(.*?)\s*$");
-        var regexTitleMultilineEntry = new Regex(@"^( {3,}|\t)");
-
-        var match = regexTitleEntry.Match(_line);
-        if (match.Success)
-        {
-            var text = match.Groups[2].Value;
-            Script.TitleEntries.Add(new TitleEntry(match.Groups[1].Value, text));
-            _multiLineTitleEntry = string.IsNullOrEmpty(text);
-            return true;
+            throw new SyntaxErrorException($"Unexpected token: {_Peek()}");
         }
 
-        if (_multiLineTitleEntry && regexTitleMultilineEntry.IsMatch(_line))
+        private bool _Match(params string[] expectedTokens)
         {
-            var entry = Script.TitleEntries[^1];
-            entry.AppendLine(_line);
-            return true;
-        }
-
-        _inTitlePage = false;
-        return false;
-    }
-
-    private bool ParseSection()
-    {
-        int depth = 0;
-        foreach (char ch in this._lineTrim)
-        {
-            if (ch == '#' && depth < 7)
+            if (_pos < _tokens.Count && Array.Exists(expectedTokens, t => t == _tokens[_pos]))
             {
-                depth += 1;
+                _pos++;
+                return true;
             }
-            else
-            {
-                break;
-            }
-        }
-
-        if (depth == 0)
-        {
             return false;
         }
 
-        AddElement(new Section(depth, _lineTrim.Substring(depth).Trim()));
-        return true;
-    }
-
-    private bool ParseLyrics()
-    {
-        if (_lineTrim.StartsWith("~"))
+        private void _Consume(string expectedToken)
         {
-            AddElement(new Lyric(_lineTrim.Substring(1).TrimStart()));
-            return true;
-        }
-        return false;
-    }
-
-    private bool ParseSynopsis()
-    {
-        if (Regex.IsMatch(_lineTrim, @"^=(?!\=)"))
-        {
-            AddElement(new Synopsis(_lineTrim.Substring(1).TrimStart()));
-            return true;
-        }
-        return false;
-    }
-
-    private SceneHeadingInfo? DecodeSceneHeading(string line)
-    {
-        var regex = new Regex(@"^(.*?)(?:\s*#([a-zA-Z0-9\-.]+)#)?$");
-        var match = regex.Match(line);
-        if (match.Success)
-        {
-            var text = match.Groups[1].Value.Trim();
-            string? sceneNumber = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null;
-            return new SceneHeadingInfo{
-                Text = text,
-                SceneNumber = sceneNumber
-            };
-        }
-        return null;
-    }
-    
-    private bool ParseForcedSceneHeading()
-    {
-        var regex = new Regex(@"^\.[a-zA-Z0-9]");
-        if (regex.IsMatch(_lineTrim))
-        {
-            var heading = DecodeSceneHeading(_lineTrim.Substring(1));
-            if (heading!=null)
+            if (!_Match(expectedToken))
             {
-                AddElement(new SceneHeading(heading.Text, heading.SceneNumber, forced: true));
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private bool ParseSceneHeading()
-    {
-        var regexHeading = new Regex(@"^\s*((INT|EXT|EST|INT\.\/EXT|INT\/EXT|I\/E)(\.|\s))|(FADE IN:\s*)", RegexOptions.IgnoreCase);
-        if (regexHeading.IsMatch(_lineTrim))
-        {
-            var heading = DecodeSceneHeading(_lineTrim);
-            if (heading!=null)
-            {
-                AddElement(new SceneHeading(heading.Text, heading.SceneNumber));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private bool ParseForcedTransition()
-    {
-        if (_lineTrim.StartsWith(">") && !_lineTrim.EndsWith("<"))
-        {
-            AddElement(new Transition(_lineTrim.Substring(1).Trim(), forced: true));
-            return true;
-        }
-
-        return false;
-    }
-    
-    private bool ParseTransition()
-    {
-        var regexTransition = new Regex(@"^\s*(?:[A-Z\s]+TO:)\s*$");
-        if (regexTransition.IsMatch(_lineTrim) && _lastLineEmpty)
-        {
-            _pending.Add(new PendingElement
-            {
-                Type = ElementType.TRANSITION,
-                Element = new Transition(_lineTrim),
-                Backup = new Action(_lineTrim)
-            });
-            return true;
-        }
-        return false;
-    }
-
-    private bool ParseParenthetical()
-    {
-        var regexParenthetical = new Regex(@"^\s*\((.*)\)\s*$");
-        var match = regexParenthetical.Match(_line);
-        var lastElement = GetLastElement();
-
-        if (match.Success && _inDialogue && lastElement != null &&
-            (lastElement.Type == ElementType.CHARACTER || lastElement.Type == ElementType.DIALOGUE))
-        {
-            AddElement(new Parenthetical(match.Groups[1].Value));
-            return true;
-        }
-        return false;
-    }
-
-    private CharacterInfo? DecodeCharacter(string line)
-    {
-        // Strip out all CONT'D variants
-        var regexCont = new Regex(@"\(\s*CONT[’']D\s*\)");
-        var noContLine = regexCont.Replace(line, "").Trim();
-
-        var regexCharacter = new Regex(@"^([^(\^]+?)\s*(?:\((.*)\))?(?:\s*\^\s*)?$");
-        var match = regexCharacter.Match(noContLine);
-
-        if (match.Success)
-        {
-            var name = match.Groups[1].Value.Trim();
-            var extension = match.Groups[2].Success ? match.Groups[2].Value.Trim() : null;
-            var dual = noContLine.Trim().EndsWith("^");
-            return new CharacterInfo
-            {
-                Name = name,
-                Extension = extension,
-                Dual = dual
-            };
-        }
-        return null;
-    }
-    
-    private bool ParseForcedCharacter()
-    {
-        if (_lineTrim.StartsWith("@"))
-        {
-            var trimmedLine = _lineTrim.Substring(1).Trim();
-            var character = DecodeCharacter(trimmedLine);
-            if (character != null)
-            {
-                AddElement(new Character(trimmedLine, character.Name, character.Extension, character.Dual));
-                return true;
+                if (_pos >= _tokens.Count)
+                    throw new SyntaxErrorException($"Expected '{expectedToken}' but expression ended.");
+                throw new SyntaxErrorException($"Expected '{expectedToken}' but found '{_Peek()}'");
             }
         }
 
-        return false;
-    }
-
-    private bool ParseCharacter()
-    {
-        // Strip out all CONT'D variants
-        var regexCont = new Regex(@"\(\s*CONT[’']D\s*\)");
-        var noContLineTrim = regexCont.Replace(_lineTrim, "").Trim();
-
-        var regexCharacter = new Regex(@"^([A-Z][^a-z]*?)\s*(?:\(.*\))?(?:\s*\^\s*)?$");
-        if (_lastLineEmpty && regexCharacter.IsMatch(noContLineTrim))
+        private string? _Peek()
         {
-            var character = DecodeCharacter(noContLineTrim);
-            if (character != null)
+            return _pos < _tokens.Count ? _tokens[_pos] : null;
+        }
+
+        private string? _Previous()
+        {
+            return _pos > 0 ? _tokens[_pos - 1] : null;
+        }
+
+        private string? _Advance()
+        {
+            if (_pos < _tokens.Count)
             {
-                _pending.Add(new PendingElement
-                {
-                    Type = ElementType.CHARACTER,
-                    Element = new Character(noContLineTrim, character.Name, character.Extension, character.Dual),
-                    Backup = new Action(_lineTrim)
-                });
-                return true;
+                _pos++;
+                return _tokens[_pos - 1];
             }
-        }
-        return false;
-    }
-
-    private bool ParseDialogue()
-    {
-        var lastElement = GetLastElement();
-        if (lastElement != null && _line.Length > 0 &&
-            (lastElement.Type == ElementType.CHARACTER || lastElement.Type == ElementType.PARENTHETICAL))
-        {
-            AddElement(new Dialogue(_lineTrim));
-            return true;
+            return null;
         }
 
-        if (lastElement != null && lastElement.Type == ElementType.DIALOGUE)
+        private string _Expect(string expectedToken)
         {
-            if (_lastLineEmpty && _lastLine.Length > 0)
+            string? token = _Advance();
+            if (token != expectedToken)
             {
-                if (MergeDialogue) 
-                {
-                    lastElement.AppendLine("");
-                    lastElement.AppendLine(_lineTrim);
-                }
-                else
-                {
-                    AddElement(new Dialogue(""));
-                    AddElement(new Dialogue(_lineTrim));
-                }
-                                
-                return true;
+                throw new SyntaxErrorException($"Expected '{expectedToken}', but found '{token}'");
             }
-
-            if (!_lastLineEmpty && _lineTrim.Length > 0)
-            {
-                if (MergeDialogue)
-                {
-                    lastElement.AppendLine(_lineTrim);
-                }
-                else
-                {
-                    AddElement(new Dialogue(_lineTrim));
-                }
-                return true;
-            }
+            return token;
         }
 
-        return false;
-    }
-
-   private bool ParseForcedAction()
-    {
-        if (_lineTrim.StartsWith("!"))
+        private string? _MatchIdentifier()
         {
-            AddElement(new Action(_lineTrim.Substring(1), forced: true));
-            return true;
-        }
-        return false;
-    }
-
-   private bool ParseCenteredAction()
-    {
-        if (_lineTrim.StartsWith(">") && _lineTrim.EndsWith("<"))
-        {
-            var content = _lineTrim.Substring(1, _lineTrim.Length - 2);
-            var centeredElement = new Action(content)
+            if (_pos < _tokens.Count && Regex.IsMatch(_tokens[_pos], @"^[A-Za-z_][A-Za-z0-9_]*$"))
             {
-                Centered = true
-            };
-            AddElement(centeredElement);
-            return true;
-        }
-        return false;
-    }
-
-    private void ParseAction()
-    {
-        AddElement(new Action(_line));
-    }
-
-
-    private bool ParsePageBreak()
-    {
-        if (Regex.IsMatch(_lineTrim, @"^\s*={3,}\s*$"))
-        {
-            AddElement(new PageBreak());
-            return true;
-        }
-        return false;
-    }
-
-    private bool ParseBoneyard()
-    {
-        // Handle in-line boneyards
-        int open = _line.IndexOf("/*");
-        int close = _line.IndexOf("*/", open > -1 ? open : 0);
-        int lastTag = -1;
-
-        while (open > -1 && close > open)
-        {
-            string boneyardText = _line.Substring(open + 2, close - open - 2);
-            Script.Boneyards.Add(new Boneyard(boneyardText));
-            string tag = $"/*{Script.Boneyards.Count - 1}*/";
-            _line = _line.Substring(0, open) + tag + _line.Substring(close + 2);
-            lastTag = open + tag.Length;
-            open = _line.IndexOf("/*", lastTag);
-            close = _line.IndexOf("*/", lastTag);
-        }
-
-        // Check for entering boneyard content
-        if (_currentBoneyard == null)
-        {
-            int idx = _line.IndexOf("/*", lastTag > -1 ? lastTag : 0);
-            if (idx > -1) // Move into boneyard
-            {
-                _lineBeforeBoneyard = _line.Substring(0, idx);
-                _currentBoneyard = new Boneyard(_line.Substring(idx + 2));
-                return true;
+                string token = _tokens[_pos];
+                _pos++;
+                return token;
             }
+            return null;
         }
-        else
-        {
-            // Check for end of boneyard content
-            int idx = _line.IndexOf("*/", lastTag > -1 ? lastTag : 0);
-            if (idx > -1)
-            {
-                _currentBoneyard.AppendLine(_line.Substring(0, idx));
-                Script.Boneyards.Add(_currentBoneyard);
-                string tag = $"/*{Script.Boneyards.Count - 1}*/";
-                _line = _lineBeforeBoneyard + tag + _line.Substring(idx + 2);
-                _lineBeforeBoneyard = "";
-                _currentBoneyard = null;
-            }
-            else // Still in boneyard
-            {
-                _currentBoneyard.AppendLine(_line);
-                return true;
-            }
-        }
-        return false;
     }
-
-    private bool ParseNotes()
-    {
-        // Process inline notes
-        int open = _line.IndexOf("[[");
-        int close = _line.IndexOf("]]", open > -1 ? open : 0);
-        int lastTag = -1;
-
-        while (open > -1 && close > open)
-        {
-            string noteText = _line.Substring(open + 2, close - open - 2);
-            Script.Notes.Add(new Note(noteText));
-            string tag = $"[[{Script.Notes.Count - 1}]]";
-            _line = _line.Substring(0, open) + tag + _line.Substring(close + 2);
-            lastTag = open + tag.Length;
-            open = _line.IndexOf("[[", lastTag);
-            close = _line.IndexOf("]]", lastTag);
-        }
-
-        // Handle note content
-        if (_currentNote == null)
-        {
-            int idx = _line.IndexOf("[[", lastTag > -1 ? lastTag : 0);
-            if (idx > -1) // Move into notes
-            {
-                _lineBeforeNote = _line.Substring(0, idx);
-                _currentNote = new Note(_line.Substring(idx + 2));
-                _line = _lineBeforeNote;
-                return true;
-            }
-        }
-        else
-        {
-            // Check for end of note content
-            int idx = _line.IndexOf("]]", lastTag > -1 ? lastTag : 0);
-            if (idx > -1)
-            {
-                _currentNote.AppendLine(_line.Substring(0, idx));
-                Script.Notes.Add(_currentNote);
-                string tag = $"[[{Script.Notes.Count - 1}]]";
-                _line = _lineBeforeNote + tag + _line.Substring(idx + 2);
-                _lineBeforeNote = "";
-                _currentNote = null;
-            }
-            else if (_line == "")
-            {
-                // End of note due to line break
-                Script.Notes.Add(_currentNote);
-                string tag = $"[[{Script.Notes.Count - 1}]]";
-                _line = _lineBeforeNote + tag;
-                _lineBeforeNote = "";
-                _currentNote = null;
-            }
-            else
-            {
-                // Still in notes
-                _currentNote.AppendLine(_line);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private (string untagged, List<string> tags) ExtractTags(string line) {
-        Regex regex = new Regex(@"\s#([^\s#][^#]*?)(?=\s|$)");
-        List<string> tags = [];
-        MatchCollection matches = regex.Matches(line);
-
-        int? firstMatchIndex = null;
-
-        foreach (Match match in matches) {
-            if (firstMatchIndex == null) {
-                firstMatchIndex = match.Index;
-            }
-            tags.Add(match.Groups[1].Value);
-        }
-
-        string untagged = firstMatchIndex != null ? line[..firstMatchIndex.Value].TrimEnd() : line;
-        return (untagged, tags);
-    }
-
-    private class PendingElement
-    {
-        public ElementType Type { get; set; }
-        public required Element Element { get; set; }
-        public required Element Backup { get; set; }
-    }
-
-    private class CharacterInfo
-    {
-        public required string Name { get; set; }
-        public string? Extension { get; set; }
-        public bool Dual { get; set; }
-    }
-
-    private class SceneHeadingInfo {
-        public required string Text { get; set; }
-        public string? SceneNumber { get; set; }
-    };
 }

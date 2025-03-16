@@ -1,9 +1,9 @@
 // This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
-// Copyright (c) 2024 Ian Thomas
+// Copyright (c) 2025 Ian Thomas
 
 namespace FountainTools.Tests;
 using System.IO;
-using Fountain;
+using ExpressionParser;
 
 public class ParserTest
 {
@@ -12,6 +12,23 @@ public class ParserTest
     }
 
     [Fact]
+    public void Simple()
+    {
+        var parser = new Parser();
+        var expression = parser.Parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+
+        var context = new Dictionary<string, object>
+        {
+            { "get_name", new Func<string>(() => "fred") },
+            { "counter", 1 }
+        };
+
+        var result = expression.Evaluate(context);
+
+        Assert.Equal(true, result);
+    }
+
+    /*[Fact]
     public void Scratch()
     {
         string source = loadTestFile("Scratch.fountain");
@@ -264,5 +281,5 @@ public class ParserTest
         string output = fp.Script.Dump();
         //Console.WriteLine(output);
         Assert.Equal(match, output);
-    }
+    }*/
 }
