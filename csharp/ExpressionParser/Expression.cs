@@ -1,25 +1,12 @@
+/*
+ * This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
+ * Copyright (c) 2025 Ian Thomas
+ */
+
 using System.Reflection;
 
 namespace ExpressionParser
 {
-    // Settings (mutable) for the package
-    public static class Settings
-    {
-        public enum STRING_FORMAT {
-            SINGLEQUOTE = 0,
-            ESCAPED_SINGLEQUOTE = 1,
-            DOUBLEQUOTE = 2,
-            ESCAPED_DOUBLEQUOTE = 3
-        }
-
-        private static STRING_FORMAT _stringFormat = STRING_FORMAT.SINGLEQUOTE;
-        public static STRING_FORMAT StringFormat
-        {
-            get { return _stringFormat; }
-            set { _stringFormat = value; }
-        }
-    }
-
     // Utility functions: type conversion and formatting
     public static class Utils
     {
@@ -91,15 +78,15 @@ namespace ExpressionParser
 
         public static string FormatString(string val)
         {
-            switch (Settings.StringFormat)
+            switch (Writer.StringFormat)
             {
-                case Settings.STRING_FORMAT.SINGLEQUOTE:
+                case Writer.STRING_FORMAT.SINGLEQUOTE:
                     return $"'{val}'";
-                case Settings.STRING_FORMAT.ESCAPED_SINGLEQUOTE:
+                case Writer.STRING_FORMAT.ESCAPED_SINGLEQUOTE:
                     return $"\\'{val}\\'";
-                case Settings.STRING_FORMAT.ESCAPED_DOUBLEQUOTE:
+                case Writer.STRING_FORMAT.ESCAPED_DOUBLEQUOTE:
                     return $"\\\"{val}\\\"";
-                case Settings.STRING_FORMAT.DOUBLEQUOTE:
+                case Writer.STRING_FORMAT.DOUBLEQUOTE:
                 default:
                     return $"\"{val}\"";
             }
