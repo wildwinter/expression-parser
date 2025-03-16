@@ -32,6 +32,7 @@ install(TARGETS ${PROJECT_NAME}
 add_executable(tests 
     test/catch_amalgamated.cpp
     test/test_parser.cpp
+    test/test_writer.cpp
     test/test_utils.cpp)
 
 # Link the library to the test executable
