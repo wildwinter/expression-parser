@@ -1,5 +1,5 @@
 # This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
-# Copyright (c) 2024 Ian Thomas
+# Copyright (c) 2025 Ian Thomas
 
 import unittest
 import sys
@@ -48,7 +48,7 @@ class TestParser(unittest.TestCase):
             "D":False,
             "get_name":lambda: "fred",
             "end_func":lambda: True,
-            "whisky": lambda id, n: str(n)+"whisky_"+id,
+            "whisky": lambda id, n: str(int(n))+"whisky_"+id,
             "counter":1
         }
 

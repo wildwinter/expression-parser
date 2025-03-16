@@ -3,10 +3,18 @@
  * Copyright (c) 2025 Ian Thomas
  */
 
-const STRING_FORMAT_SINGLEQUOTE = 0;
-const STRING_FORMAT_ESCAPED_SINGLEQUOTE = 1;
-const STRING_FORMAT_DOUBLEQUOTE = 2;
-const STRING_FORMAT_ESCAPED_DOUBLEQUOTE = 3;
+export const StringFormat = Object.freeze({
+  SINGLEQUOTE: 0,
+  ESCAPED_SINGLEQUOTE: 1,
+  DOUBLEQUOTE: 2,
+  ESCAPED_DOUBLEQUOTE: 3,
+});
+
+let _STRING_FORMAT = StringFormat.SINGLEQUOTE;
+
+export function setStringFormat(newFormat) {
+  _STRING_FORMAT = newFormat;
+}
 
 export class ExpressionNode {
   constructor(name, precedence) {
@@ -25,7 +33,7 @@ export class ExpressionNode {
     throw new Error("Abstract method 'dump_structure' not implemented");
   }
 
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
+  write() {
     throw new Error("Abstract method 'write' not implemented");
   }
 }
@@ -44,7 +52,7 @@ export class BinaryOp extends ExpressionNode {
     const result = this._do_eval(left_val, right_val);
 
     if (dump_eval) {
-      dump_eval.push(`Evaluated: ${left_val} ${this._op} ${right_val} = ${result}`);
+      dump_eval.push(`Evaluated: ${_format_value(left_val)} ${this._op} ${_format_value(right_val)} = ${_format_value(result)}`);
     }
     return result;
   }
@@ -60,9 +68,9 @@ export class BinaryOp extends ExpressionNode {
     return out;
   }
 
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
-    let left_str = this._left.write(string_format);
-    let right_str = this._right.write(string_format);
+  write() {
+    let left_str = this._left.write();
+    let right_str = this._right.write();
 
     if (this._left._precedence < this._precedence) {
       left_str = `(${left_str})`;
@@ -199,7 +207,7 @@ export class UnaryOp extends ExpressionNode {
     const val = this._operand.evaluate(context, dump_eval);
     const result = this._do_eval(val);
     if (dump_eval) {
-      dump_eval.push(`Evaluated: ${this._op} ${val} = ${result}`);
+      dump_eval.push(`Evaluated: ${this._op} ${_format_value(val)} = ${_format_value(result)}`);
     }
     return result;
   }
@@ -214,8 +222,8 @@ export class UnaryOp extends ExpressionNode {
     return out;
   }
 
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
-    let operand_str = this._operand.write(string_format);
+  write() {
+    let operand_str = this._operand.write();
     if (this._operand._precedence < this._precedence) {
       operand_str = `(${operand_str})`;
     }
@@ -248,15 +256,15 @@ export class LiteralBoolean extends ExpressionNode {
   }
   evaluate(context, dump_eval) {
     if (dump_eval) {
-      dump_eval.push(`Boolean: ${this._value}`);
+      dump_eval.push(`Boolean: ${_format_value(this._value)}`);
     }
     return this._value;
   }
   dump_structure(indent = 0) {
-    return "  ".repeat(indent) + `Boolean(${this._value})\n`;
+    return "  ".repeat(indent) + `Boolean(${_format_value(this._value)})\n`;
   }
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
-    return this._value ? "true" : "false";
+  write() {
+    return _format_value(this._value);
   }
 }
 
@@ -275,7 +283,7 @@ export class LiteralNumber extends ExpressionNode {
   dump_structure(indent = 0) {
     return "  ".repeat(indent) + `Number(${this._value})\n`;
   }
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
+  write() {
     return `${this._value}`;
   }
 }
@@ -287,25 +295,15 @@ export class LiteralString extends ExpressionNode {
   }
   evaluate(context, dump_eval) {
     if (dump_eval) {
-      dump_eval.push(`String: ${this._value}`);
+      dump_eval.push(`String: ${_format_string(this._value)}`);
     }
     return this._value;
   }
   dump_structure(indent = 0) {
-    return "  ".repeat(indent) + `String(${this._value})\n`;
+    return "  ".repeat(indent) + `String(${_format_string(this._value)})\n`;
   }
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
-    switch (string_format) {
-      case STRING_FORMAT_SINGLEQUOTE:
-        return `'${this._value}'`;
-      case STRING_FORMAT_ESCAPED_SINGLEQUOTE:
-        return `\\'${this._value}\\'`;
-      case STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
-        return `\\"${this._value}\\"`;
-      case STRING_FORMAT_DOUBLEQUOTE:
-      default:
-        return `"${this._value}"`;
-    }
+  write() {
+    return _format_string(this._value);
   }
 }
 
@@ -323,14 +321,14 @@ export class Variable extends ExpressionNode {
       throw new TypeError(`Variable '${this._name}' must return bool, string, or numeric.`);
     }
     if (dump_eval) {
-      dump_eval.push(`Fetching variable: ${this._name} -> ${value}`);
+      dump_eval.push(`Fetching variable: ${this._name} -> ${_format_value(value)}`);
     }
     return value;
   }
   dump_structure(indent = 0) {
     return "  ".repeat(indent) + `Variable(${this._name})\n`;
   }
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
+  write() {
     return this._name;
   }
 }
@@ -349,8 +347,9 @@ export class FunctionCall extends ExpressionNode {
     const arg_values = this._args.map(arg => arg.evaluate(context, dump_eval));
 
     // Check function arity using func.length
-    if (arg_values.length < func.length) {
-      throw new Error(`Function '${this._func_name}' does not support the provided arguments ${JSON.stringify(arg_values)}.`);
+    if (arg_values.length !== func.length) {
+      const formattedArgs = arg_values.map(val => _format_value(val)).join(", ");
+      throw new Error(`Function '${this._func_name}' does not support the provided arguments (${formattedArgs}).`);
     }
 
     const result = func(...arg_values);
@@ -359,7 +358,8 @@ export class FunctionCall extends ExpressionNode {
       throw new TypeError(`Function '${this._func_name}' must return bool, string, or numeric.`);
     }
     if (dump_eval) {
-      dump_eval.push(`Calling function: ${this._func_name}(${JSON.stringify(arg_values)}) = ${result}`);
+      const formattedArgs = arg_values.map(val => _format_value(val)).join(", ");
+      dump_eval.push(`Called function: ${this._func_name}(${formattedArgs}) = ${_format_value(result)}`);
     }
     return result;
   }
@@ -370,8 +370,8 @@ export class FunctionCall extends ExpressionNode {
     }
     return out;
   }
-  write(string_format = STRING_FORMAT_SINGLEQUOTE) {
-    const written_args = this._args.map(arg => arg.write(string_format));
+  write() {
+    const written_args = this._args.map(arg => arg.write());
     return `${this._func_name}(${written_args.join(", ")})`;
   }
 }
@@ -410,9 +410,9 @@ function _make_numeric(val) {
     return val;
   }
   if (typeof val === "string") {
-    const floatVal = parseFloat(val);
-    if (!isNaN(floatVal)) {
-      return floatVal;
+    const numericRegex = /^-?\d+(\.\d+)?$/;
+    if (numericRegex.test(val)) {
+      return parseFloat(val);
     }
   }
   throw new TypeError(`Type mismatch: Expecting number but got '${val}'`);
@@ -429,4 +429,25 @@ function _make_type_match(left_val, right_val) {
     return _make_str(right_val);
   }
   throw new TypeError(`Type mismatch: unrecognised type for '${left_val}'`);
+}
+
+function _format_string(val) {
+  switch (_STRING_FORMAT) {
+    case StringFormat.SINGLEQUOTE:
+      return `'${val}'`;
+    case StringFormat.ESCAPED_SINGLEQUOTE:
+      return `\\'${val}\\'`;
+    case StringFormat.ESCAPED_DOUBLEQUOTE:
+      return `\\"${val}\\"`;
+    case StringFormat.DOUBLEQUOTE:
+    default:
+      return `"${val}"`;
+  }
+}
+
+function _format_value(val) {
+  if (typeof val === "string") {
+    return _format_string(val);
+  }
+  return val.toString();
 }

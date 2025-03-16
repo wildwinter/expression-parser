@@ -1,5 +1,5 @@
 # This file is part of an MIT-licensed project: see LICENSE file or README.md for details.
-# Copyright (c) 2024 Ian Thomas
+# Copyright (c) 2025 Ian Thomas
 
 import unittest
 import sys
@@ -7,7 +7,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from expression_parser.expression import STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE
+from expression_parser.expression import set_string_format, STRING_FORMAT_SINGLEQUOTE, STRING_FORMAT_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_DOUBLEQUOTE, STRING_FORMAT_ESCAPED_SINGLEQUOTE
 from expression_parser.parser import Parser
 
 class TestWriter(unittest.TestCase):
@@ -26,15 +26,19 @@ class TestWriter(unittest.TestCase):
         
         parser = Parser()
         expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0")
-        
+
         result = expression.write()
         self.assertEqual(result, "get_name() == 'fred' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        result = expression.write(string_format=STRING_FORMAT_DOUBLEQUOTE)
+        set_string_format(STRING_FORMAT_DOUBLEQUOTE)
+        result = expression.write()
         self.assertEqual(result, "get_name() == \"fred\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        result = expression.write(string_format=STRING_FORMAT_ESCAPED_DOUBLEQUOTE)
+        set_string_format(STRING_FORMAT_ESCAPED_DOUBLEQUOTE)
+        result = expression.write()
         self.assertEqual(result, "get_name() == \\\"fred\\\" and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
-        result = expression.write(string_format=STRING_FORMAT_ESCAPED_SINGLEQUOTE)
+        set_string_format(STRING_FORMAT_ESCAPED_SINGLEQUOTE)
+        result = expression.write()
         self.assertEqual(result, "get_name() == \\'fred\\' and counter > 0 and 5 / 5 != 0", "Expression doesn't match.")
+        set_string_format(STRING_FORMAT_SINGLEQUOTE)
 
     def test_writer(self):
 

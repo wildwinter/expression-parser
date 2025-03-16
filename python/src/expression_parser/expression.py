@@ -10,6 +10,12 @@ STRING_FORMAT_ESCAPED_SINGLEQUOTE = 1
 STRING_FORMAT_DOUBLEQUOTE = 2
 STRING_FORMAT_ESCAPED_DOUBLEQUOTE = 3
 
+_STRING_FORMAT = STRING_FORMAT_SINGLEQUOTE
+
+def set_string_format(string_format: int):
+    global _STRING_FORMAT
+    _STRING_FORMAT = string_format
+
 class ExpressionNode:
     @abstractmethod
     def __init__(self, name: str, precedence: int) -> None:
@@ -25,7 +31,7 @@ class ExpressionNode:
         raise NotImplementedError()
     
     @abstractmethod
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+    def write(self) -> str:
         raise NotImplementedError()
     
 
@@ -57,9 +63,9 @@ class BinaryOp(ExpressionNode):
         out += self._right.dump_structure(indent + 1)
         return out
     
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        left_str = self._left.write(string_format)
-        right_str = self._right.write(string_format)
+    def write(self) -> str:
+        left_str = self._left.write()
+        right_str = self._right.write()
 
         if self._left._precedence < self._precedence:
             left_str = f"({left_str})"
@@ -196,8 +202,8 @@ class UnaryOp(ExpressionNode):
         out += self._operand.dump_structure(indent + 1)
         return out
     
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        operand_str = self._operand.write(string_format)
+    def write(self) -> str:
+        operand_str = self._operand.write()
 
         if self._operand._precedence < self._precedence:
             operand_str = f"({operand_str})"
@@ -230,14 +236,14 @@ class LiteralBoolean(ExpressionNode):
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> bool:
         if dump_eval is not None:
-            dump_eval.append(f"Boolean: {self._value}")
+            dump_eval.append(f"Boolean: {_format_boolean(self._value)}")
         return self._value
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"Boolean({self._value})") + "\n"
+        return ("  " * indent + f"Boolean({_format_boolean(self._value)})") + "\n"
     
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        return "true" if self._value else "false"
+    def write(self) -> str:
+        return _format_boolean(self._value)
 
 
 class LiteralNumber(ExpressionNode):
@@ -253,7 +259,7 @@ class LiteralNumber(ExpressionNode):
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Number({_format_numeric(self._value)})") + "\n"
 
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+    def write(self) -> str:
         return _format_numeric(self._value)
     
 
@@ -264,20 +270,14 @@ class LiteralString(ExpressionNode):
 
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> str:
         if dump_eval is not None:
-            dump_eval.append(f"String: {self._value}")
+            dump_eval.append(f"String: {_format_string(self._value)}")
         return self._value
 
     def dump_structure(self, indent: int = 0) -> str:
-        return ("  " * indent + f"String({self._value})") + "\n"
+        return ("  " * indent + f"String({_format_string(self._value)})") + "\n"
 
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
-        if string_format==STRING_FORMAT_SINGLEQUOTE:
-            return f"'{self._value}'"
-        if string_format==STRING_FORMAT_ESCAPED_SINGLEQUOTE:
-            return f"\\'{self._value}\\'"
-        if string_format==STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
-            return f"\\\"{self._value}\\\""
-        return f"\"{self._value}\""
+    def write(self) -> str:
+        return _format_string(self._value)
     
     
 class Variable(ExpressionNode):
@@ -299,7 +299,7 @@ class Variable(ExpressionNode):
     def dump_structure(self, indent: int = 0) -> str:
         return ("  " * indent + f"Variable({self._name})") + "\n"
     
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+    def write(self) -> str:
         return self._name
     
 
@@ -323,7 +323,8 @@ class FunctionCall(ExpressionNode):
         try:
             sig.bind(*arg_values)
         except TypeError as e:
-            raise RuntimeError(f"Function '{self._func_name}' does not support the provided arguments {arg_values}.")
+            formatted_args = ", ".join(_format_value(val) for val in arg_values)
+            raise RuntimeError(f"Function '{self._func_name}' does not support the provided arguments ({formatted_args}).")
 
         result = func(*arg_values)
 
@@ -331,7 +332,8 @@ class FunctionCall(ExpressionNode):
             raise TypeError(f"Function '{self._func_name}' must return bool, string, or numeric.")
         
         if dump_eval is not None:
-            dump_eval.append(f"Called function: {self._func_name}({arg_values}) = {_format_value(result)}")
+            formatted_args = ", ".join(_format_value(val) for val in arg_values)
+            dump_eval.append(f"Called function: {self._func_name}({formatted_args}) = {_format_value(result)}")
 
         return result
 
@@ -341,11 +343,11 @@ class FunctionCall(ExpressionNode):
             out += arg.dump_structure(indent + 1)
         return out
     
-    def write(self, string_format = STRING_FORMAT_SINGLEQUOTE) -> str:
+    def write(self) -> str:
         out = self._func_name+"("
         written_args = []
         for arg in self._args:
-            written_args.append(arg.write(string_format))
+            written_args.append(arg.write())
         out += ", ".join(written_args)
         out += ")"
         return out
@@ -394,12 +396,31 @@ def _make_type_match(left_val: Any, right_val: Any) -> Any:
     raise TypeError(f"Type mismatch: unrecognised type for '{left_val}'")
 
 
+def _format_boolean(val: bool) -> str:
+    return "true" if val else "false"
+
 def _format_numeric(num: Union[int, float]) -> str:
     if isinstance(num, float) and int(num) == num:
         return str(int(num))
     return str(num)
 
+def _format_string(val: str) -> str:
+    if _STRING_FORMAT==STRING_FORMAT_SINGLEQUOTE:
+        return f"'{val}'"
+    if _STRING_FORMAT==STRING_FORMAT_ESCAPED_SINGLEQUOTE:
+        return f"\\'{val}\\'"
+    if _STRING_FORMAT==STRING_FORMAT_ESCAPED_DOUBLEQUOTE:
+        return f"\\\"{val}\\\""
+    return f"\"{val}\""
+
 def _format_value(val: Any) -> str:
+    if isinstance(val, bool):
+        return _format_boolean(val)
+    
     if isinstance(val, (int, float)):
         return _format_numeric(val)
+    
+    if isinstance(val, str):
+        return _format_string(val)
+    
     return str(val)

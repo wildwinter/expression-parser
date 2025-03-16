@@ -1,20 +1,20 @@
 "true and 1"
 And
-  Boolean(True)
+  Boolean(true)
   Number(1)
 
-Boolean: True
+Boolean: true
 Number: 1
-Evaluated: True and 1 = True
+Evaluated: true and 1 = true
 
 "0 && false"
 And
   Number(0)
-  Boolean(False)
+  Boolean(false)
 
 Number: 0
-Boolean: False
-Evaluated: 0 and False = False
+Boolean: false
+Evaluated: 0 and false = false
 
 "1|| 2"
 Or
@@ -23,7 +23,7 @@ Or
 
 Number: 1
 Number: 2
-Evaluated: 1 or 2 = True
+Evaluated: 1 or 2 = true
 
 " 1 or 0"
 Or
@@ -32,16 +32,16 @@ Or
 
 Number: 1
 Number: 0
-Evaluated: 1 or 0 = True
+Evaluated: 1 or 0 = true
 
 "0 or true"
 Or
   Number(0)
-  Boolean(True)
+  Boolean(true)
 
 Number: 0
-Boolean: True
-Evaluated: 0 or True = True
+Boolean: true
+Evaluated: 0 or true = true
 
 "function()"
 FunctionCall(function)
@@ -55,7 +55,7 @@ GreaterThan
 
 Number: 1
 Number: 1
-Evaluated: 1 > 1 = False
+Evaluated: 1 > 1 = false
 
 "1!=1"
 NotEquals
@@ -64,7 +64,7 @@ NotEquals
 
 Number: 1
 Number: 1
-Evaluated: 1 != 1 = False
+Evaluated: 1 != 1 = false
 
 "0!=1"
 NotEquals
@@ -73,7 +73,7 @@ NotEquals
 
 Number: 0
 Number: 1
-Evaluated: 0 != 1 = True
+Evaluated: 0 != 1 = true
 
 "0<1"
 LessThan
@@ -82,14 +82,14 @@ LessThan
 
 Number: 0
 Number: 1
-Evaluated: 0 < 1 = True
+Evaluated: 0 < 1 = true
 
 "not true"
 Not
-  Boolean(True)
+  Boolean(true)
 
-Boolean: True
-Evaluated: not True = False
+Boolean: true
+Evaluated: not true = false
 
 "1==1 and 1>0"
 And
@@ -102,11 +102,11 @@ And
 
 Number: 1
 Number: 1
-Evaluated: 1 == 1 = True
+Evaluated: 1 == 1 = true
 Number: 1
 Number: 0
-Evaluated: 1 > 0 = True
-Evaluated: True and True = True
+Evaluated: 1 > 0 = true
+Evaluated: true and true = true
 
 "(2 or 1) and (end_func()==17) or 17=="17""
 Or
@@ -119,19 +119,19 @@ Or
       Number(17)
   Equals
     Number(17)
-    String(17)
+    String('17')
 
 Number: 2
 Number: 1
-Evaluated: 2 or 1 = True
-Called function: end_func([]) = True
+Evaluated: 2 or 1 = true
+Called function: end_func() = true
 Number: 17
-Evaluated: True == 17 = True
-Evaluated: True and True = True
+Evaluated: true == 17 = true
+Evaluated: true and true = true
 Number: 17
-String: 17
-Evaluated: 17 == 17 = True
-Evaluated: True or True = True
+String: '17'
+Evaluated: 17 == '17' = true
+Evaluated: true or true = true
 
 "(2 or 1) and (end_func()==17) or 17=="17a""
 Or
@@ -144,16 +144,16 @@ Or
       Number(17)
   Equals
     Number(17)
-    String(17a)
+    String('17a')
 
 Type mismatch: Expecting number but got '17a'
 
 "!true"
 Not
-  Boolean(True)
+  Boolean(true)
 
-Boolean: True
-Evaluated: not True = False
+Boolean: true
+Evaluated: not true = false
 
 "fab00"
 Variable(fab00)
@@ -178,14 +178,14 @@ Not
   Variable(C)
 
 Fetching variable: C -> 15
-Evaluated: not 15 = False
+Evaluated: not 15 = false
 
 "not D"
 Not
   Variable(D)
 
-Fetching variable: D -> False
-Evaluated: not False = True
+Fetching variable: D -> false
+Evaluated: not false = true
 
 "E"
 Variable(E)
@@ -199,7 +199,7 @@ Equals
 
 Number: 101
 Number: 101.1
-Evaluated: 101 == 101.1 = False
+Evaluated: 101 == 101.1 = false
 
 "101==101.0"
 Equals
@@ -208,7 +208,7 @@ Equals
 
 Number: 101
 Number: 101
-Evaluated: 101 == 101 = True
+Evaluated: 101 == 101 = true
 
 "!10!=9"
 NotEquals
@@ -217,9 +217,9 @@ NotEquals
   Number(9)
 
 Number: 10
-Evaluated: not 10 = False
+Evaluated: not 10 = false
 Number: 9
-Evaluated: False != 9 = True
+Evaluated: false != 9 = true
 
 "!(10!=9)"
 Not
@@ -229,86 +229,86 @@ Not
 
 Number: 10
 Number: 9
-Evaluated: 10 != 9 = True
-Evaluated: not True = False
+Evaluated: 10 != 9 = true
+Evaluated: not true = false
 
 "get_name()=="fred""
 Equals
   FunctionCall(get_name)
-  String(fred)
+  String('fred')
 
-Called function: get_name([]) = fred
-String: fred
-Evaluated: fred == fred = True
+Called function: get_name() = 'fred'
+String: 'fred'
+Evaluated: 'fred' == 'fred' = true
 
 "get_name("jim")"
 FunctionCall(get_name)
-  String(jim)
+  String('jim')
 
-Function 'get_name' does not support the provided arguments ['jim'].
+Function 'get_name' does not support the provided arguments ('jim').
 
 "whisky("test",7)=="7whisky_test""
 Equals
   FunctionCall(whisky)
-    String(test)
+    String('test')
     Number(7)
-  String(7whisky_test)
+  String('7whisky_test')
 
-String: test
+String: 'test'
 Number: 7
-Called function: whisky(['test', 7.0]) = 7.0whisky_test
-String: 7whisky_test
-Evaluated: 7.0whisky_test == 7whisky_test = False
+Called function: whisky('test', 7) = '7whisky_test'
+String: '7whisky_test'
+Evaluated: '7whisky_test' == '7whisky_test' = true
 
 "whisky("test",7)=='7whisky_test'"
 Equals
   FunctionCall(whisky)
-    String(test)
+    String('test')
     Number(7)
-  String(7whisky_test)
+  String('7whisky_test')
 
-String: test
+String: 'test'
 Number: 7
-Called function: whisky(['test', 7.0]) = 7.0whisky_test
-String: 7whisky_test
-Evaluated: 7.0whisky_test == 7whisky_test = False
+Called function: whisky('test', 7) = '7whisky_test'
+String: '7whisky_test'
+Evaluated: '7whisky_test' == '7whisky_test' = true
 
 ""try a string with spaces""
-String(try a string with spaces)
+String('try a string with spaces')
 
-String: try a string with spaces
+String: 'try a string with spaces'
 
 "funable("boo")"
 FunctionCall(funable)
-  String(boo)
+  String('boo')
 
 Function 'funable' not found in context.
 
 "("testing" && ("nesting" or "bucket"))"
 And
-  String(testing)
+  String('testing')
   Or
-    String(nesting)
-    String(bucket)
+    String('nesting')
+    String('bucket')
 
-String: testing
-String: nesting
-String: bucket
-Evaluated: nesting or bucket = False
-Evaluated: testing and False = False
+String: 'testing'
+String: 'nesting'
+String: 'bucket'
+Evaluated: 'nesting' or 'bucket' = false
+Evaluated: 'testing' and false = false
 
 "(True && (False or True))"
 And
-  Boolean(True)
+  Boolean(true)
   Or
-    Boolean(False)
-    Boolean(True)
+    Boolean(false)
+    Boolean(true)
 
-Boolean: True
-Boolean: False
-Boolean: True
-Evaluated: False or True = True
-Evaluated: True and True = True
+Boolean: true
+Boolean: false
+Boolean: true
+Evaluated: false or true = true
+Evaluated: true and true = true
 
 "-1"
 Negative
@@ -361,8 +361,8 @@ Evaluated: 5 + 3 = 8
 
 ""hello" + "world""
 Plus
-  String(hello)
-  String(world)
+  String('hello')
+  String('world')
 
 Type mismatch: Expecting number but got 'hello'
 
@@ -377,7 +377,7 @@ Number: 3
 Number: 2
 Number: 1
 Evaluated: 2 + 1 = 3
-Evaluated: 3 > 3 = False
+Evaluated: 3 > 3 = false
 
 "5 / 0"
 Divide
@@ -388,17 +388,17 @@ Division by zero.
 
 "-True"
 Negative
-  Boolean(True)
+  Boolean(true)
 
-Boolean: True
-Evaluated: - True = -1
+Boolean: true
+Evaluated: - true = -1
 
 "!5"
 Not
   Number(5)
 
 Number: 5
-Evaluated: not 5 = False
+Evaluated: not 5 = false
 
 "(6 + 2) * 5"
 Multiply
@@ -432,7 +432,7 @@ Evaluated: 1.5 * 3 = 4.5
 Number: 7
 Number: 2
 Evaluated: 7 * 2 = 14
-Evaluated: 4.5 >= 14 = False
+Evaluated: 4.5 >= 14 = false
 
 "6 / 4 * (3 >= 7) * 2"
 Multiply
@@ -450,8 +450,8 @@ Number: 4
 Evaluated: 6 / 4 = 1.5
 Number: 3
 Number: 7
-Evaluated: 3 >= 7 = False
-Evaluated: 1.5 * False = 0
+Evaluated: 3 >= 7 = false
+Evaluated: 1.5 * false = 0
 Number: 2
 Evaluated: 0 * 2 = 0
 
@@ -484,7 +484,7 @@ Number: 4
 Number: 3
 Evaluated: 4 * 3 = 12
 Number: 7
-Evaluated: 12 >= 7 = True
-Evaluated: 6 / True = 6
+Evaluated: 12 >= 7 = true
+Evaluated: 6 / true = 6
 Number: 2
 Evaluated: 6 * 2 = 12
