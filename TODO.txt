@@ -1,12 +1,10 @@
-Javascript
-C#
-cpp
-
-Error reporting etc.
-
+DONE
 ----
-
 Support math expressions
 Fix up params errors for function calls
 Explicit Ops
 Add write functionality
+Javascript
+C#
+cpp
+Error reporting etc.
