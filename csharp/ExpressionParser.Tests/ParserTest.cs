@@ -28,258 +28,56 @@ public class ParserTest
         Assert.Equal(true, result);
     }
 
-    /*[Fact]
-    public void Scratch()
-    {
-        string source = loadTestFile("Scratch.fountain");
-        string match = loadTestFile("Scratch.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
     [Fact]
-    public void SceneHeading()
+    public void MatchOutput()
     {
-        string source = loadTestFile("SceneHeading.fountain");
-        string match = loadTestFile("SceneHeading.txt");
+        string source = loadTestFile("Parse.txt");
 
-        Parser fp = new Parser();
-        fp.AddText(source);
+        string[] lines = source.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
 
-        string output = fp.Script.Dump();
+        var context = new Dictionary<string, object>
+        {
+            { "C", 15 },
+            { "D", false },
+            { "get_name", new Func<string>(() => "fred") },
+            { "end_func", new Func<bool>(() => true) },
+            { "whisky", new Func<string, double, string>((id, n) => ((int)n).ToString() + "whisky_" + id) },
+            { "counter", 1 }
+        };
+
+        var parser = new Parser();
+
+        var processedLines = new List<string>();
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("//"))
+            {
+                processedLines.Add(line);
+                continue;
+            }
+
+            processedLines.Add($"\"{line}\"");
+            try
+            {
+                var node = parser.Parse(line);
+                processedLines.Add(node.DumpStructure());
+
+                var dumpEval = new List<string>();
+                node.Evaluate(context, dumpEval);
+                processedLines.Add(string.Join("\n", dumpEval));
+            }
+            catch (Exception e)
+            {
+                processedLines.Add(e.Message);
+            }
+            processedLines.Add("");
+        }
+
+        string output = string.Join("\n", processedLines);
+                
         //Console.WriteLine(output);
+
+        string match = loadTestFile("Parse-Output.txt");
         Assert.Equal(match, output);
     }
-
-    [Fact]
-    public void ActionMerged()
-    {
-        string source = loadTestFile("Action.fountain");
-        string match = loadTestFile("Action-Merged.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void ActionUnmerged()
-    {
-        string source = loadTestFile("Action.fountain");
-        string match = loadTestFile("Action-Unmerged.txt");
-
-        Parser fp = new Parser();
-        fp.MergeActions = false;
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Character()
-    {
-        string source = loadTestFile("Character.fountain");
-        string match = loadTestFile("Character.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void DialogueMerged()
-    {
-        string source = loadTestFile("Dialogue.fountain");
-        string match = loadTestFile("Dialogue-Merged.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void DialogueUnmerged()
-    {
-        string source = loadTestFile("Dialogue.fountain");
-        string match = loadTestFile("Dialogue-Unmerged.txt");
-
-        Parser fp = new Parser();
-        fp.MergeDialogue = false;
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Parenthetical()
-    {
-        string source = loadTestFile("Parenthetical.fountain");
-        string match = loadTestFile("Parenthetical.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Lyrics()
-    {
-        string source = loadTestFile("Lyrics.fountain");
-        string match = loadTestFile("Lyrics.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Transition()
-    {
-        string source = loadTestFile("Transition.fountain");
-        string match = loadTestFile("Transition.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void TitlePage()
-    {
-        string source = loadTestFile("TitlePage.fountain");
-        string match = loadTestFile("TitlePage.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void PageBreak()
-    {
-        string source = loadTestFile("PageBreak.fountain");
-        string match = loadTestFile("PageBreak.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void LineBreaks()
-    {
-        string source = loadTestFile("LineBreaks.fountain");
-        string match = loadTestFile("LineBreaks.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Notes()
-    {
-        string source = loadTestFile("Notes.fountain");
-        string match = loadTestFile("Notes.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-    [Fact]
-    public void Boneyards()
-    {
-        string source = loadTestFile("Boneyards.fountain");
-        string match = loadTestFile("Boneyards.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-   [Fact]
-    public void Sections()
-    {
-        string source = loadTestFile("Sections.fountain");
-        string match = loadTestFile("Sections.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-   [Fact]
-    public void UTF8()
-    {
-        string source = loadTestFile("UTF8.fountain");
-        string match = loadTestFile("UTF8.txt");
-
-        Parser fp = new Parser();
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }
-
-   [Fact]
-    public void Tags()
-    {
-        string source = loadTestFile("Tags.fountain");
-        string match = loadTestFile("Tags.txt");
-
-        Parser fp = new Parser();
-        fp.UseTags = true;
-        fp.AddText(source);
-
-        string output = fp.Script.Dump();
-        //Console.WriteLine(output);
-        Assert.Equal(match, output);
-    }*/
 }

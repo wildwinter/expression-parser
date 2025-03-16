@@ -527,7 +527,7 @@ namespace ExpressionParser
             if (argValues.Count != expectedParams.Length)
             {
                 string formattedArgs = string.Join(", ", argValues.Select(v => Utils.FormatValue(v)));
-                throw new Exception($"Function '{_funcName}' expects {expectedParams.Length} arguments, but received {argValues.Count}. Provided arguments: ({formattedArgs}).");
+                throw new Exception($"Function '{_funcName}' does not support the provided arguments ({formattedArgs}).");
             }
 
             object? result = func.DynamicInvoke(argValues.ToArray());
