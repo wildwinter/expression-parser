@@ -115,7 +115,6 @@ Supported operators are:
 import { ExpressionParser } from './expressionParser.js';
 
 const parser = new ExpressionParser();
-let parser = new ExpressionParser();
 let expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
 
 let context = {
@@ -143,7 +142,16 @@ Either you can use the same module / ESM format (`expressionParser.js`):
         import { ExpressionParser } from './expressionParser.js';
 
         const parser = new ExpressionParser();
-        TBD
+        let expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+
+        let context = {
+        "get_name": () => "fred",
+        "counter": 1
+        };
+
+        let result = expression.evaluate(context);
+
+        assert.equal(result, true);
     </script>
 </body>
 </html>
@@ -162,7 +170,16 @@ Or you can use a minified IIFE version (`expressionParser.min.js`):
     <script>
         // Access the global ExpressionParser object
         const parser = new ExpressionParser.Parser();
-        TBD
+        let expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+
+        let context = {
+        "get_name": () => "fred",
+        "counter": 1
+        };
+
+        let result = expression.evaluate(context);
+
+        assert.equal(result, true);
     </script>
 </body>
 </html>
