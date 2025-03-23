@@ -67,8 +67,8 @@ public:
     virtual std::any Evaluate(const Context &context, std::vector<std::string>* dumpEval = nullptr) const override;
     virtual std::string DumpStructure(int indent = 0) const override;
     virtual std::string Write() const override;
-
 protected:
+    virtual std::pair<bool, std::any> ShortCircuit(const std::any &leftVal) const;
     virtual std::any DoEval(const std::any &leftVal, const std::any &rightVal) const = 0;
 };
 
@@ -76,6 +76,7 @@ class OpOr : public BinaryOp {
 public:
     OpOr(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right);
 protected:
+    virtual std::pair<bool, std::any> ShortCircuit(const std::any& leftVal) const override;
     virtual std::any DoEval(const std::any &leftVal, const std::any &rightVal) const override;
 };
 
@@ -83,6 +84,7 @@ class OpAnd : public BinaryOp {
 public:
     OpAnd(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right);
 protected:
+    virtual std::pair<bool, std::any> ShortCircuit(const std::any& leftVal) const override;
     virtual std::any DoEval(const std::any &leftVal, const std::any &rightVal) const override;
 };
 
@@ -125,6 +127,7 @@ class OpMultiply : public BinaryOp {
 public:
     OpMultiply(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right);
 protected:
+    virtual std::pair<bool, std::any> ShortCircuit(const std::any& leftVal) const override;
     virtual std::any DoEval(const std::any &leftVal, const std::any &rightVal) const override;
 };
 

@@ -139,6 +139,17 @@ BinaryOp::BinaryOp(const std::string &name, std::shared_ptr<ExpressionNode> left
 
 std::any BinaryOp::Evaluate(const Context &context, std::vector<std::string>* dumpEval) const {
     std::any leftVal = Left->Evaluate(context, dumpEval);
+
+    auto [shortCircuit, shortCircuitResult] = ShortCircuit(leftVal);
+    if (shortCircuit)
+    {
+        if (dumpEval != nullptr)
+        {
+            dumpEval->push_back("Evaluated: " + Utils::FormatValue(leftVal) + " " + Op + " (ignore) = " + Utils::FormatValue(shortCircuitResult));
+        }
+        return shortCircuitResult;
+    }
+
     std::any rightVal = Right->Evaluate(context, dumpEval);
     std::any result = DoEval(leftVal, rightVal);
     if (dumpEval) {
@@ -146,6 +157,10 @@ std::any BinaryOp::Evaluate(const Context &context, std::vector<std::string>* du
                               Utils::FormatValue(rightVal) + " = " + Utils::FormatValue(result));
     }
     return result;
+}
+
+std::pair<bool, std::any> BinaryOp::ShortCircuit(const std::any& leftVal) const {
+    return { false, std::any() };
 }
 
 std::string BinaryOp::DumpStructure(int indent) const {
@@ -169,12 +184,28 @@ std::string BinaryOp::Write() const {
 OpOr::OpOr(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right)
     : BinaryOp("Or", left, "or", right, 40) {}
 
+std::pair<bool, std::any> OpOr::ShortCircuit(const std::any& leftVal) const {
+
+    bool result = Utils::MakeBool(leftVal);
+    if (result)
+        return {true, true};
+    return { false, std::any() };
+}
+
 std::any OpOr::DoEval(const std::any &leftVal, const std::any &rightVal) const {
     return Utils::MakeBool(leftVal) || Utils::MakeBool(rightVal);
 }
 
 OpAnd::OpAnd(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right)
     : BinaryOp("And", left, "and", right, 50) {}
+
+std::pair<bool, std::any> OpAnd::ShortCircuit(const std::any& leftVal) const {
+
+    bool result = Utils::MakeBool(leftVal);
+    if (!result)
+        return {true, false};
+    return { false, std::any() };
+}
 
 std::any OpAnd::DoEval(const std::any &leftVal, const std::any &rightVal) const {
     return Utils::MakeBool(leftVal) && Utils::MakeBool(rightVal);
@@ -222,6 +253,14 @@ std::any OpDivide::DoEval(const std::any &leftVal, const std::any &rightVal) con
 
 OpMultiply::OpMultiply(std::shared_ptr<ExpressionNode> left, std::shared_ptr<ExpressionNode> right)
     : BinaryOp("Multiply", left, "*", right, 80) {}
+
+std::pair<bool, std::any> OpMultiply::ShortCircuit(const std::any& leftVal) const {
+
+    double result = Utils::MakeNumeric(leftVal);
+    if (result==0.0)
+        return {true, 0.0};
+    return { false, std::any() };
+}
 
 std::any OpMultiply::DoEval(const std::any &leftVal, const std::any &rightVal) const {
     return Utils::MakeNumeric(leftVal) * Utils::MakeNumeric(rightVal);

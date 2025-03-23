@@ -10,6 +10,7 @@ function()
 0<1
 not true
 1==1 and 1>0
+17=="17a"
 (2 or 1) and (end_func()==17) or 17=="17"
 (2 or 1) and (end_func()==17) or 17=="17a"
 !true

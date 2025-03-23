@@ -35,6 +35,14 @@ class BinaryOp(ExpressionNode):
     
     def evaluate(self, context: Dict[str, Any], dump_eval: Optional[List[str]] = None) -> Any:
         left_val = self._left.evaluate(context, dump_eval)
+        
+        short_circuit, short_circuit_result = self._short_circuit(left_val)
+        if short_circuit:
+            if dump_eval is not None:
+                dump_eval.append(f"Evaluated: {_format_value(left_val)} {self._op} (ignore) = {_format_value(short_circuit_result)}")
+
+            return short_circuit_result
+        
         right_val = self._right.evaluate(context, dump_eval)
         result: Any = self._do_eval(left_val, right_val)
         
@@ -46,6 +54,9 @@ class BinaryOp(ExpressionNode):
     @abstractmethod
     def _do_eval(self, left_val: Any, right_val: Any) -> Any:
         raise NotImplementedError()
+    
+    def _short_circuit(self, left_val: Any) -> tuple[bool, Any]:
+        return [False, None]
 
     def dump_structure(self, indent: int = 0) -> str:
         out = ("  " * indent + f"{self._name}") + "\n"
@@ -70,6 +81,12 @@ class OpOr(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
         super().__init__("Or", left, "or", right, 40)
 
+    def _short_circuit(self, left_val: Any) -> tuple[bool, Any]:
+        result = _make_bool(left_val)
+        if result:
+            return [True, True]
+        return [False, None]
+
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_bool(left_val) or _make_bool(right_val)
     
@@ -78,6 +95,12 @@ class OpAnd(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
         super().__init__("And", left, "and", right, 50)
 
+    def _short_circuit(self, left_val: Any) -> tuple[bool, Any]:
+        result = _make_bool(left_val)
+        if not result:
+            return [True, False]
+        return [False, None]
+    
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_bool(left_val) and _make_bool(right_val)
     
@@ -131,6 +154,12 @@ class OpMultiply(BinaryOp):
     def __init__(self, left: ExpressionNode, right: ExpressionNode) -> None:
         super().__init__("Multiply", left, "*", right, 80)
 
+    def _short_circuit(self, left_val: Any) -> tuple[bool, Any]:
+        result = _make_numeric(left_val)
+        if result==0:
+            return [True, 0]
+        return [False, None]
+    
     def _do_eval(self, left_val: Any, right_val: Any) -> Any: 
         return _make_numeric(left_val) * _make_numeric(right_val)
     

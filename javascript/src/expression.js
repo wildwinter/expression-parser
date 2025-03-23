@@ -40,6 +40,15 @@ export class BinaryOp extends ExpressionNode {
 
   evaluate(context, dump_eval) {
     const left_val = this._left.evaluate(context, dump_eval);
+
+    const [shortCircuit, shortCircuitResult] = this._short_circuit(left_val);
+    if (shortCircuit) {
+      if (dump_eval) {
+        dump_eval.push(`Evaluated: ${_format_value(left_val)} ${this._op} (ignore) = ${_format_value(shortCircuitResult)}`);
+      }
+      return shortCircuitResult;
+    }
+
     const right_val = this._right.evaluate(context, dump_eval);
     const result = this._do_eval(left_val, right_val);
 
@@ -51,6 +60,11 @@ export class BinaryOp extends ExpressionNode {
 
   _do_eval(left_val, right_val) {
     throw new Error("Abstract method '_do_eval' not implemented");
+  }
+
+  _short_circuit(left_val) {
+    // By default, do not short-circuit.
+    return [false, null];
   }
 
   dump_structure(indent = 0) {
@@ -78,6 +92,12 @@ export class OpOr extends BinaryOp {
   constructor(left, right) {
     super("Or", left, "or", right, 40);
   }
+  _short_circuit(left_val) {
+    const result = _make_bool(left_val);
+    if (result)
+      return [true, true];
+    return [false, null];
+  }
   _do_eval(left_val, right_val) {
     return _make_bool(left_val) || _make_bool(right_val);
   }
@@ -86,6 +106,12 @@ export class OpOr extends BinaryOp {
 export class OpAnd extends BinaryOp {
   constructor(left, right) {
     super("And", left, "and", right, 50);
+  }
+  _short_circuit(left_val) {
+    const result = _make_bool(left_val);
+    if (!result)
+      return [true, false];
+    return [false, null];
   }
   _do_eval(left_val, right_val) {
     return _make_bool(left_val) && _make_bool(right_val);
@@ -146,6 +172,12 @@ export class OpDivide extends BinaryOp {
 export class OpMultiply extends BinaryOp {
   constructor(left, right) {
     super("Multiply", left, "*", right, 80);
+  }
+  _short_circuit(left_val) {
+    const result = _make_numeric(left_val);
+    if (result==0)
+      return [true, 0];
+    return [false, null];
   }
   _do_eval(left_val, right_val) {
     return _make_numeric(left_val) * _make_numeric(right_val);

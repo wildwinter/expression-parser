@@ -13,8 +13,7 @@ And
   Boolean(false)
 
 Number: 0
-Boolean: false
-Evaluated: 0 and false = false
+Evaluated: 0 and (ignore) = false
 
 "1|| 2"
 Or
@@ -22,8 +21,7 @@ Or
   Number(2)
 
 Number: 1
-Number: 2
-Evaluated: 1 or 2 = true
+Evaluated: 1 or (ignore) = true
 
 " 1 or 0"
 Or
@@ -31,8 +29,7 @@ Or
   Number(0)
 
 Number: 1
-Number: 0
-Evaluated: 1 or 0 = true
+Evaluated: 1 or (ignore) = true
 
 "0 or true"
 Or
@@ -108,6 +105,13 @@ Number: 0
 Evaluated: 1 > 0 = true
 Evaluated: true and true = true
 
+"17=="17a""
+Equals
+  Number(17)
+  String('17a')
+
+Type mismatch: Expecting number but got '17a'
+
 "(2 or 1) and (end_func()==17) or 17=="17""
 Or
   And
@@ -122,16 +126,12 @@ Or
     String('17')
 
 Number: 2
-Number: 1
-Evaluated: 2 or 1 = true
+Evaluated: 2 or (ignore) = true
 Called function: end_func() = true
 Number: 17
 Evaluated: true == 17 = true
 Evaluated: true and true = true
-Number: 17
-String: '17'
-Evaluated: 17 == '17' = true
-Evaluated: true or true = true
+Evaluated: true or (ignore) = true
 
 "(2 or 1) and (end_func()==17) or 17=="17a""
 Or
@@ -146,7 +146,13 @@ Or
     Number(17)
     String('17a')
 
-Type mismatch: Expecting number but got '17a'
+Number: 2
+Evaluated: 2 or (ignore) = true
+Called function: end_func() = true
+Number: 17
+Evaluated: true == 17 = true
+Evaluated: true and true = true
+Evaluated: true or (ignore) = true
 
 "!true"
 Not
@@ -292,10 +298,7 @@ And
     String('bucket')
 
 String: 'testing'
-String: 'nesting'
-String: 'bucket'
-Evaluated: 'nesting' or 'bucket' = false
-Evaluated: 'testing' and false = false
+Evaluated: 'testing' and (ignore) = false
 
 "(True && (False or True))"
 And
@@ -452,8 +455,7 @@ Number: 3
 Number: 7
 Evaluated: 3 >= 7 = false
 Evaluated: 1.5 * false = 0
-Number: 2
-Evaluated: 0 * 2 = 0
+Evaluated: 0 * (ignore) = 0
 
 "6 / (4 * (3 >= 7)) * 2"
 Multiply

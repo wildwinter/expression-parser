@@ -141,6 +141,15 @@ namespace ExpressionParser
         public override object Evaluate(Dictionary<string, object> context, List<string>? dumpEval = null)
         {
             object leftVal = Left.Evaluate(context, dumpEval);
+            var (shortCircuit, shortCircuitResult) = this.ShortCircuit(leftVal);
+            if (shortCircuit)
+            {
+                if (dumpEval != null)
+                {
+                    dumpEval.Add($"Evaluated: {Utils.FormatValue(leftVal)} {Op} (ignore) = {Utils.FormatValue(shortCircuitResult!)}");
+                }
+                return shortCircuitResult!;
+            }
             object rightVal = Right.Evaluate(context, dumpEval);
             object result = DoEval(leftVal, rightVal);
             if (dumpEval != null)
@@ -151,6 +160,11 @@ namespace ExpressionParser
         }
 
         protected abstract object DoEval(object leftVal, object rightVal);
+
+        protected virtual (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
+        {
+            return (false, null);
+        }
 
         public override string DumpStructure(int indent = 0)
         {
@@ -180,7 +194,13 @@ namespace ExpressionParser
     {
         public OpOr(ExpressionNode left, ExpressionNode right)
             : base("Or", left, "or", right, 40) { }
-
+        protected override (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
+        {
+            bool result = Utils.MakeBool(leftVal);
+            if (result)
+                return (true, true);
+            return (false, null);
+        }
         protected override object DoEval(object leftVal, object rightVal)
         {
             return Utils.MakeBool(leftVal) || Utils.MakeBool(rightVal);
@@ -191,7 +211,13 @@ namespace ExpressionParser
     {
         public OpAnd(ExpressionNode left, ExpressionNode right)
             : base("And", left, "and", right, 50) { }
-
+        protected override (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
+        {
+            bool result = Utils.MakeBool(leftVal);
+            if (!result)
+                return (true, false);
+            return (false, null);
+        }
         protected override object DoEval(object leftVal, object rightVal)
         {
             return Utils.MakeBool(leftVal) && Utils.MakeBool(rightVal);
@@ -262,7 +288,13 @@ namespace ExpressionParser
     {
         public OpMultiply(ExpressionNode left, ExpressionNode right)
             : base("Multiply", left, "*", right, 80) { }
-
+        protected override (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
+        {
+            double result = Utils.MakeNumeric(leftVal);
+            if (result==0.0)
+                return (true, 0.0);
+            return (false, null);
+        }
         protected override object DoEval(object leftVal, object rightVal)
         {
             return Utils.MakeNumeric(leftVal) * Utils.MakeNumeric(rightVal);
