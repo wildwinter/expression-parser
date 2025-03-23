@@ -15,7 +15,10 @@ export class ExpressionNode {
     }
     this._name = name;
     this._precedence = precedence;
+    this._specificity = 0;
   }
+
+  get specificity() {return this._specificity;}
 
   evaluate(context, dump_eval) {
     throw new Error("Abstract method 'evaluate' not implemented");
@@ -36,6 +39,7 @@ export class BinaryOp extends ExpressionNode {
     this._left = left;
     this._op = op;
     this._right = right;
+    this._specificity = left.specificity + right.specificity;
   }
 
   evaluate(context, dump_eval) {
@@ -91,6 +95,7 @@ export class BinaryOp extends ExpressionNode {
 export class OpOr extends BinaryOp {
   constructor(left, right) {
     super("Or", left, "or", right, 40);
+    this._specificity+=1;
   }
   _short_circuit(left_val) {
     const result = _make_bool(left_val);
@@ -106,6 +111,7 @@ export class OpOr extends BinaryOp {
 export class OpAnd extends BinaryOp {
   constructor(left, right) {
     super("And", left, "and", right, 50);
+    this._specificity+=1;
   }
   _short_circuit(left_val) {
     const result = _make_bool(left_val);
@@ -225,6 +231,7 @@ export class UnaryOp extends ExpressionNode {
     super(name, precedence);
     this._operand = operand;
     this._op = op;
+    this._specificity = operand.specificity;
   }
 
   evaluate(context, dump_eval) {

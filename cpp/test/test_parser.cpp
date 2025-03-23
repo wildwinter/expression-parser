@@ -25,6 +25,18 @@ TEST_CASE( "Simple") {
     REQUIRE(std::any_cast<bool>(result) == true);
 }
 
+TEST_CASE( "Specificity") {
+
+    Parser parser;
+
+    auto expression = parser.Parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+    REQUIRE(expression->GetSpecificity()==2);
+    expression = parser.Parse("get_name()=='fred' and counter>0 and (5/5.0!=0 or true)");
+    REQUIRE(expression->GetSpecificity()==3);
+    expression = parser.Parse("true");
+    REQUIRE(expression->GetSpecificity()==0);
+}
+
 TEST_CASE( "MatchOutput") {
     std::string source = loadTestFile("Parse.txt");
 

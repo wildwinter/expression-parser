@@ -29,6 +29,18 @@ public class ParserTest
     }
 
     [Fact]
+    public void Specificity()
+    {
+        var parser = new Parser();
+        var expression = parser.Parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+        Assert.Equal(2, expression.Specificity);
+        expression = parser.Parse("get_name()=='fred' and counter>0 and (5/5.0!=0 or true)");
+        Assert.Equal(3, expression.Specificity);
+        expression = parser.Parse("true");
+        Assert.Equal(0, expression.Specificity);
+    }
+
+    [Fact]
     public void MatchOutput()
     {
         string source = loadTestFile("Parse.txt");

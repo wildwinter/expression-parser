@@ -24,6 +24,19 @@ describe('ExpressionParser', () => {
     });
   });
 
+  describe('Specificity', () => {
+    it('should match', () => {
+
+      let parser = new ExpressionParser();
+      let expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0");
+      assert.equal(expression.specificity, 2);
+      expression = parser.parse("get_name()=='fred' and counter>0 and (5/5.0!=0 or true)");
+      assert.equal(expression.specificity, 3);
+      expression = parser.parse("true");
+      assert.equal(expression.specificity, 0);
+    });
+  });
+
   describe('MatchingOutput', () => {
     it('should match', () => {
 

@@ -35,6 +35,15 @@ class TestParser(unittest.TestCase):
 
         self.assertEqual(result, True, "Expression should return True")
 
+    def test_specificity(self):
+        
+        parser = Parser()
+        expression = parser.parse("get_name()=='fred' and counter>0 and 5/5.0!=0")
+        self.assertEqual(expression.specificity, 2, "Specificity mismatch.")
+        expression = parser.parse("get_name()=='fred' and counter>0 and (5/5.0!=0 or true)")
+        self.assertEqual(expression.specificity, 3, "Specificity mismatch.")
+        expression = parser.parse("true")
+        self.assertEqual(expression.specificity, 0, "Specificity mismatch.")
 
     def test_parse(self):
 

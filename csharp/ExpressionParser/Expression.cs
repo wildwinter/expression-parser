@@ -106,11 +106,14 @@ namespace ExpressionParser
         }
     }
 
-    // Abstract base class for AST nodes
     public abstract class ExpressionNode
     {
         public string Name { get; set; }
         public int Precedence { get; set; }
+
+        public int Specificity{ get {return _specificity;}}
+
+        protected int _specificity = 0;
 
         protected ExpressionNode(string name, int precedence)
         {
@@ -136,6 +139,7 @@ namespace ExpressionParser
             Left = left;
             Op = op;
             Right = right;
+            _specificity = left.Specificity + right.Specificity;
         }
 
         public override object Evaluate(Dictionary<string, object> context, List<string>? dumpEval = null)
@@ -193,7 +197,11 @@ namespace ExpressionParser
     public class OpOr : BinaryOp
     {
         public OpOr(ExpressionNode left, ExpressionNode right)
-            : base("Or", left, "or", right, 40) { }
+            : base("Or", left, "or", right, 40) 
+        { 
+            _specificity +=1;
+        }
+
         protected override (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
         {
             bool result = Utils.MakeBool(leftVal);
@@ -210,7 +218,11 @@ namespace ExpressionParser
     public class OpAnd : BinaryOp
     {
         public OpAnd(ExpressionNode left, ExpressionNode right)
-            : base("And", left, "and", right, 50) { }
+            : base("And", left, "and", right, 50)
+        { 
+            _specificity +=1;
+        }
+
         protected override (bool shortCircuit, object? shortCircuitResult) ShortCircuit(object leftVal)
         {
             bool result = Utils.MakeBool(leftVal);
@@ -356,6 +368,7 @@ namespace ExpressionParser
         {
             Operand = operand;
             Op = op;
+            _specificity = operand.Specificity;
         }
 
         public override object Evaluate(Dictionary<string, object> context, List<string>? dumpEval = null)
