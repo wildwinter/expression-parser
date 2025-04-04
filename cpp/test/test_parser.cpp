@@ -37,6 +37,18 @@ TEST_CASE( "Specificity") {
     REQUIRE(expression->GetSpecificity()==0);
 }
 
+TEST_CASE( "StaticStr") {
+    Parser parser;
+
+    auto expression = parser.Parse("fixed_str1=='fred' and fixed_str2=='jim'");
+
+    Context context;
+    context["fixed_str1"] = std::string("fred");
+    context["fixed_str2"] = "jim";
+    std::any result = expression->Evaluate(context);
+    REQUIRE(std::any_cast<bool>(result) == true);
+}
+
 TEST_CASE( "MatchOutput") {
     std::string source = loadTestFile("Parse.txt");
 

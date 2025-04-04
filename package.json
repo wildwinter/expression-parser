@@ -1,6 +1,6 @@
 {
   "name": "expression-parser",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Multi-language simple expression parser.",
   "scripts": {
     "clean": "npm run clean:all",
